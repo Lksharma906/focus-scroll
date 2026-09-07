@@ -84,7 +84,7 @@ export class HomeScreen {
 
         <main class="home-main-scroll">
           <!-- Featured Hero: Main Feed -->
-          <section class="home-hero-card">
+          <section class="home-hero-card" id="home-hero-card" title="Tap to Play Main Feed">
             <div class="hero-top-row">
               <div class="hero-badge">
                 <span class="pulse-dot"></span>
@@ -94,10 +94,21 @@ export class HomeScreen {
             </div>
 
             <div class="hero-info">
-              <h2 class="hero-heading">Main Feed</h2>
-              <p class="hero-subtext">
-                All ${totalVideos} videos across your playlists consolidated into one continuous stream.
-              </p>
+              <div class="hero-heading-row">
+                <div class="hero-heading-text">
+                  <h2 class="hero-heading">Main Feed</h2>
+                  <p class="hero-subtext">
+                    ${totalVideos > 0
+                      ? `All ${totalVideos} videos across your playlists in one continuous stream.`
+                      : 'Consolidates all videos across all your playlists in one stream.'}
+                  </p>
+                </div>
+                <div class="hero-play-circle" id="home-hero-circle-btn" title="Play Main Feed" aria-label="Play Main Feed">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="6 4 20 12 6 20 6 4"></polygon>
+                  </svg>
+                </div>
+              </div>
 
               ${
                 previewThumbs.length > 0
@@ -111,6 +122,7 @@ export class HomeScreen {
                       `
                         )
                         .join('')}
+                      <span class="hero-thumb-more">${totalVideos} short${totalVideos === 1 ? '' : 's'} ready</span>
                     </div>`
                   : ''
               }
@@ -245,8 +257,9 @@ export class HomeScreen {
       this.callbacks.onOpenDrawer();
     });
 
-    // Main Feed Hero actions
-    this.element.querySelector('#home-hero-play-btn')?.addEventListener('click', async () => {
+    // Main Feed Hero actions - whole card or button triggers playback
+    const heroCard = this.element.querySelector('#home-hero-card');
+    heroCard?.addEventListener('click', async () => {
       const consolidated = await this.storage.getConsolidatedVideos();
       if (consolidated.length === 0) {
         this.callbacks.onOpenDrawer('default');

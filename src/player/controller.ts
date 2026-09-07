@@ -28,6 +28,16 @@ export class PlayerController implements IPlayerController {
     await loadYouTubeIFrameAPI();
 
     return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
+      };
+
+      const timer = setTimeout(done, 2500);
+
       const YT = (window as unknown as { YT: { Player: new (id: string, opts: unknown) => YTPlayerInstance } }).YT;
       this.player = new YT.Player(config.containerId, {
         width: '100%',
@@ -35,7 +45,8 @@ export class PlayerController implements IPlayerController {
         playerVars: buildYouTubePlayerVars(),
         events: {
           onReady: () => {
-            resolve();
+            clearTimeout(timer);
+            done();
           },
           onStateChange: (event: { data: number }) => {
             this.handleYTStateChange(event.data);

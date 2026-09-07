@@ -273,11 +273,24 @@ export class StorageManager implements IStorageManager {
     const seen = new Set<string>();
     const allVideos: VideoEntry[] = [];
 
-    for (const list of store.lists) {
-      for (const item of list.items) {
-        if (!seen.has(item.id)) {
+    if (Array.isArray(store.items)) {
+      for (const item of store.items) {
+        if (item && item.id && !seen.has(item.id)) {
           seen.add(item.id);
           allVideos.push(item);
+        }
+      }
+    }
+
+    if (Array.isArray(store.lists)) {
+      for (const list of store.lists) {
+        if (Array.isArray(list.items)) {
+          for (const item of list.items) {
+            if (item && item.id && !seen.has(item.id)) {
+              seen.add(item.id);
+              allVideos.push(item);
+            }
+          }
         }
       }
     }

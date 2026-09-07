@@ -123,6 +123,13 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       await new Promise((r) => setTimeout(r, 20));
       expect(onPlayFeed).toHaveBeenCalledWith('default', false);
 
+      // Clicking the play circle also triggers playback
+      const heroCircle = el.querySelector('.hero-play-circle') as HTMLElement;
+      expect(heroCircle).not.toBeNull();
+      heroCircle.click();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(onPlayFeed).toHaveBeenCalledTimes(2);
+
       // Verify Main Feed is NOT rendered as a duplicate playlist card in playlists-grid
       expect(el.querySelector('#home-playlists-grid .playlist-card[data-id="default"]')).toBeNull();
 

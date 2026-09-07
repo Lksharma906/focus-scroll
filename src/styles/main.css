@@ -1448,27 +1448,36 @@ html, body {
 }
 
 .home-main-scroll {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 18px 20px calc(var(--safe-bottom) + 32px);
+  padding: 16px 18px calc(var(--safe-bottom) + 36px);
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 /* Hero Consolidated Card */
 .home-hero-card {
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
-  border: 1px solid rgba(129, 140, 248, 0.3);
-  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.15);
-  padding: 22px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(30, 27, 75, 0.75) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.18);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-hero-card:active {
+  transform: scale(0.985);
 }
 
 .hero-top-row {
@@ -1517,31 +1526,65 @@ html, body {
 .hero-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.hero-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hero-heading-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .hero-heading {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.5px;
   color: #fff;
+  margin: 0;
 }
 
 .hero-subtext {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.72);
   line-height: 1.45;
+  margin-top: 4px;
+}
+
+.hero-play-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-hero-card:hover .hero-play-circle,
+.home-hero-card:active .hero-play-circle {
+  transform: scale(1.08);
+  box-shadow: 0 6px 22px rgba(239, 68, 68, 0.65);
 }
 
 .hero-thumb-strip {
   display: flex;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .hero-thumb-wrap {
-  width: 50px;
-  height: 50px;
+  width: 46px;
+  height: 46px;
   border-radius: 10px;
   overflow: hidden;
   border: 2px solid #000;
@@ -1549,6 +1592,7 @@ html, body {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   background: #111;
   position: relative;
+  flex-shrink: 0;
 }
 
 .hero-thumb-img {
@@ -1557,28 +1601,37 @@ html, body {
   object-fit: cover;
 }
 
+.hero-thumb-more {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 20px;
+  font-weight: 600;
+}
+
 .hero-actions-row {
   display: flex;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .btn-hero-play {
-  flex: 1;
+  width: 100%;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  gap: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #fff;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   padding: 13px 20px;
-  border-radius: 12px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.4);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-hero-play:active {
@@ -1605,6 +1658,7 @@ html, body {
 
 /* Empty State Card */
 .home-empty-card {
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
   border: 1px dashed rgba(255, 255, 255, 0.18);
   border-radius: 16px;
@@ -1644,6 +1698,7 @@ html, body {
 
 /* Playlists Section */
 .home-playlists-section {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1705,6 +1760,7 @@ html, body {
 }
 
 .playlist-card {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1828,6 +1884,7 @@ html, body {
 
 /* Home Footer */
 .home-bottom-footer {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
