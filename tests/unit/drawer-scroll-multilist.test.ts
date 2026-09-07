@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { PlaylistDrawer } from '../../src/components/drawer';
 import { StorageManager } from '../../src/storage/db';
 import { SAMPLE_BATCH_SHORTS } from '../../src/storage/seed';
+import { VideoEntry } from '../../src/types/storage';
 
 describe('PlaylistDrawer Multi-List & Scrollability', () => {
   let storage: StorageManager;
   let drawer: PlaylistDrawer;
-  let onPlaylistUpdatedMock: ReturnType<typeof vi.fn>;
-  let onSelectVideoMock: ReturnType<typeof vi.fn>;
-  let onToastMock: ReturnType<typeof vi.fn>;
+  let onPlaylistUpdatedMock: Mock<(items: VideoEntry[], targetIndex?: number) => void>;
+  let onSelectVideoMock: Mock<(index: number) => void>;
+  let onToastMock: Mock<(msg: string) => void>;
 
   beforeEach(async () => {
     if (typeof window !== 'undefined' && window.localStorage) {
