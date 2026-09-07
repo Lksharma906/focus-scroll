@@ -5,7 +5,8 @@ import { HUD } from './components/hud';
 import { BufferingSpinner } from './components/spinner';
 import { ToastManager } from './components/toast';
 import { PlaylistDrawer } from './components/drawer';
-import { OnboardingScreen } from './components/onboarding';
+import { HomeScreen } from './components/home';
+import { VideoEntry } from './types/storage';
 
 class App {
   private root: HTMLElement;
@@ -14,76 +15,93 @@ class App {
   private spinner: BufferingSpinner;
   private toast: ToastManager;
   private drawer: PlaylistDrawer;
-  private onboarding: OnboardingScreen;
+  private homeScreen: HomeScreen;
 
   constructor() {
     this.root = document.getElementById('app') as HTMLElement;
     this.toast = new ToastManager();
     this.spinner = new BufferingSpinner();
 
+    this.homeScreen = new HomeScreen(storage, {
+      onPlayFeed: async (listId, shuffle) => {
+        await storage.switchList(listId);
+        const videos = await storage.getFeedVideos(listId, shuffle);
+        if (videos.length === 0) {
+          this.drawer.open();
+          this.toast.show('This list is empty. Add videos to play!');
+        } else {
+          await this.startFeed(videos, 0);
+        }
+      },
+      onOpenDrawer: async (listId) => {
+        if (listId) {
+          try {
+            await storage.switchList(listId);
+          } catch {}
+        }
+        this.drawer.open();
+      },
+      onOpenVersionControl: () => {
+        this.drawer.openVersionControl();
+      },
+      onLoadSamples: async () => {
+        for (const item of SEED_SHORTS) {
+          try {
+            await storage.addItem(item);
+          } catch {}
+        }
+        this.toast.show('Sample Shorts loaded!');
+        await this.homeScreen.render();
+      },
+      onToast: (msg) => this.toast.show(msg)
+    });
+
     this.drawer = new PlaylistDrawer(storage, {
-      onPlaylistUpdated: (items, targetIndex) => {
+      onPlaylistUpdated: async (items, targetIndex) => {
+        await this.homeScreen.render();
         if (items.length === 0) {
           if (this.feedManager) {
             this.feedManager.setPlaylist(items, targetIndex);
           } else {
-            this.root.innerHTML = '';
-            this.root.appendChild(this.onboarding.getElement());
-            this.onboarding.show();
+            this.showHomeScreen();
           }
         } else if (this.feedManager) {
           this.feedManager.setPlaylist(items, targetIndex);
-        } else {
-          this.startFeed();
         }
       },
       onSelectVideo: (index) => {
         if (this.feedManager) {
           this.feedManager.goToIndex(index);
         } else {
-          this.startFeed();
+          this.startFeed(undefined, index);
         }
       },
       onToast: (msg) => this.toast.show(msg),
       onClose: async () => {
-        const store = await storage.load();
-        const activeList = store.lists.find((l) => l.id === store.activeListId) || store.lists[0];
-        const activeCount = activeList ? activeList.items.length : store.items.length;
+        await this.homeScreen.render();
+        if (!this.feedManager) {
+          this.showHomeScreen();
+        } else {
+          const store = await storage.load();
+          const activeList = store.lists.find((l) => l.id === store.activeListId) || store.lists[0];
+          const isMain = store.activeListId === 'default';
+          const count = isMain
+            ? (await storage.getConsolidatedVideos()).length
+            : activeList.items.length;
 
-        if (activeCount === 0) {
-          if (this.feedManager) {
-            this.feedManager.destroy();
-            this.feedManager = null;
+          if (count === 0) {
+            this.showHomeScreen();
           }
-          this.root.innerHTML = '';
-          this.root.appendChild(this.onboarding.getElement());
-          this.onboarding.show();
         }
       }
     });
 
     this.hud = new HUD({
       onOpenDrawer: () => this.drawer.open(),
+      onHome: () => this.showHomeScreen(),
       onNext: () => this.feedManager?.next(),
       onPrevious: () => this.feedManager?.previous()
     });
-
-    this.onboarding = new OnboardingScreen(
-      async () => {
-        // Load samples
-        for (const item of SEED_SHORTS) {
-          try {
-            await storage.addItem(item);
-          } catch {}
-        }
-        this.toast.show('Sample Shorts loaded');
-        this.startFeed();
-      },
-      () => {
-        // Open drawer
-        this.drawer.open();
-      }
-    );
 
     const { backdrop, drawer: drawerEl } = this.drawer.getElements();
     document.body.appendChild(backdrop);
@@ -91,18 +109,22 @@ class App {
   }
 
   async start(): Promise<void> {
-    const store = await storage.load();
-
-    if (store.items.length === 0) {
-      this.root.appendChild(this.onboarding.getElement());
-      this.onboarding.show();
-    } else {
-      this.startFeed();
-    }
+    this.root.appendChild(this.homeScreen.getElement());
+    this.homeScreen.show();
   }
 
-  private async startFeed(): Promise<void> {
-    this.onboarding.hide();
+  private async showHomeScreen(): Promise<void> {
+    if (this.feedManager) {
+      this.feedManager.destroy();
+      this.feedManager = null;
+    }
+    this.root.innerHTML = '';
+    this.root.appendChild(this.homeScreen.getElement());
+    this.homeScreen.show();
+  }
+
+  private async startFeed(initialVideos?: VideoEntry[], targetIndex?: number): Promise<void> {
+    this.homeScreen.hide();
     this.root.innerHTML = '';
 
     const feedViewport = document.createElement('div');
@@ -120,13 +142,15 @@ class App {
         this.toast.show(msg);
       },
       onEmptyState: () => {
-        this.root.innerHTML = '';
-        this.root.appendChild(this.onboarding.getElement());
-        this.onboarding.show();
+        this.showHomeScreen();
       }
     });
 
-    await this.feedManager.initialize();
+    if (initialVideos && initialVideos.length > 0) {
+      await this.feedManager.setPlaylist(initialVideos, targetIndex || 0);
+    } else {
+      await this.feedManager.initialize();
+    }
   }
 }
 

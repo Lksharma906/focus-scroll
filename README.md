@@ -6,31 +6,39 @@
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite)](https://vitejs.dev/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple.svg?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare%20Assets-F38020.svg?logo=cloudflare)](https://workers.cloudflare.com/)
-[![Tests](https://img.shields.io/badge/Tests-49%20Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-61%20Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
 
-FocusScroll is a lightweight, mobile-first web application engineered to break the algorithmic doom-scrolling loop. Instead of an addictive algorithm serving endless unpredictable videos with comments and recommendation traps, FocusScroll plays **only the videos you choose to add**, grouped into custom playlists, with fluid swipe gestures, local IndexedDB persistence, and full offline installability.
+FocusScroll is a lightweight, mobile-first web application engineered to break the algorithmic doom-scrolling loop. Instead of an addictive algorithm serving endless unpredictable videos with comments and recommendation traps, FocusScroll plays **only the videos you choose to add**, grouped into custom playlists or aggregated into a randomized dopamine shuffle feed, with fluid swipe gestures, local IndexedDB persistence, and full offline installability.
 
 ---
 
 ## Key Features
 
-### 1. Zero Algorithmic Traps
-* **Curated-Only Feed**: No algorithmic feeds, infinite discovery loops, comments sections, or related video sidebars.
-* **Intentional Consumption**: Create focused playlists for workouts, study guides, language drills, tech tips, or comedy skits.
+### 1. HomeScreen Launchpad & Feed Selector
+* **Modern App Entrypoint**: Dedicated launchpad displaying all your custom feeds, total video count, and live status.
+* **Instant Feed Launch**: Start playing any playlist with a single tap, or jump into the consolidated cross-playlist feed.
+* **Hero Dopamine Mix**: Features a prominent hero card that aggregates all videos across every list with automatic Fisher-Yates shuffle for surprise playback.
+* **Version Information Pill**: Displays the active version (`v1.0.0`) and provides quick access to Version Control and Rollback snapshots.
+* **One-Tap Home Return**: Return to the home screen anytime from the video player using the floating HUD home button (`🏠`).
 
-### 2. Multi-List Playlist Management
+### 2. Zero Algorithmic Traps & Consolidated Dopamine Shuffle
+* **Curated-Only Experience**: Zero external recommendation algorithms, comments sections, or sponsored distractions.
+* **Consolidated Cross-Playlist Feed**: The Main Feed automatically unions unique videos across all your playlists without manual cross-linking.
+* **Random Playback ("Dopamine Kick")**: Enjoy spontaneous, unpredictable scrolling across your own library without falling into third-party algorithmic rabbit holes.
+
+### 3. Multi-List Playlist Management
 * **Custom Named Playlists**: Create, switch between, and manage multiple lists (e.g. *Main Feed*, *Workout Energy*, *Focus & Flow*).
 * **Pill Tab Navigation**: Quickly switch active lists directly from the playlist drawer.
 * **Per-List State**: Tracks your playback position (`lastActiveIndex`) independently across lists.
 * **List Management**: Reorder videos, delete individual items, or delete entire custom lists with instant feedback.
 
-### 3. Smart Video Ingestion
+### 4. Smart Video Ingestion
 * **Universal Link Parsing**: Accepts standard YouTube links (`watch?v=...`), Short URLs (`youtube.com/shorts/...`), shortened links (`youtu.be/...`), mobile links (`m.youtube.com/...`), and raw 11-character video IDs.
 * **Smart Batch Ingestion**: Paste multi-line text or blocks of URLs—FocusScroll automatically extracts all valid video IDs and ignores noise.
 * **Duplicate Protection**: Detects and skips existing videos in the current list, notifying you with a toast.
 * **Auto Thumbnailing**: Fetches crisp thumbnail previews (`hqdefault.jpg`) automatically for the playlist drawer.
 
-### 4. Mobile-First Gestures & Native Feel
+### 5. Mobile-First Gestures & Native Feel
 * **Fluid Swipe Navigation**: Swipe up for next video and swipe down for previous video with smooth touch tracking.
 * **Velocity & Momentum Detection**: Supports both drag distance thresholds and flick gestures (velocity $\ge$ 0.4 px/ms) for snappy, effortless browsing.
 * **Boundary Resistance**: Tactile rubber-band bounce when pulling past the top or bottom of the list.
@@ -41,19 +49,19 @@ FocusScroll is a lightweight, mobile-first web application engineered to break t
   * <kbd>Space</kbd> : Play / Pause
   * <kbd>M</kbd> : Toggle Playlist Drawer
 
-### 5. 3-Slot Virtualized Player Pool
+### 6. 3-Slot Virtualized Player Pool
 * **High Performance & Low Memory**: Maintains at most 3 lightweight YouTube IFrames (`active`, `next`, `previous`) to prevent mobile browser memory bloat while delivering instant swipe transitions.
 * **Audio Autoplay Gate**: Gracefully handles mobile autoplay restrictions with a clear tap-to-unmute / start playback overlay.
 * **Replay & Loop Controls**: Visual replay overlay when a short ends, allowing loop or quick swipe to the next item.
 * **Error Resilience**: Catches embedding restrictions (YouTube errors 101/150) and provides direct fallback links without crashing the feed.
 
-### 6. Version Control & Snapshot History
+### 7. Version Control & Snapshot History
 * **Git-Like Snapshot Checkpoints**: Save custom checkpoints of your playlists and videos (e.g. `v1.1 - Workout Pack`, `Before Cleanup`).
 * **One-Click Rollbacks**: Restore your full library state to any previous version with automated state recovery and toast feedback.
 * **App Version & Update Checker**: Directly view current app version (`v1.0.0`) and trigger PWA service worker update checks on the fly.
 * **Checkpoint Portability**: Export individual snapshots or delete outdated checkpoints directly from the Version Control panel.
 
-### 7. Robust Offline Persistence & Data Portability
+### 8. Robust Offline Persistence & Data Portability
 * **Persistent Storage Backing**: Uses IndexedDB via `idb-keyval` with automatic fallback to `localStorage` and memory caching.
 * **Storage Eviction Prevention**: Requests persistent storage permission (`navigator.storage.persist()`) on launch to avoid browser eviction on iOS Safari.
 * **Export & Import**: Export your complete library and playlists to a `.json` backup file, or restore existing backups anytime.
@@ -85,7 +93,8 @@ focus-scroll/
 │   │   ├── audio-gate.ts       # Autoplay / mute permission barrier
 │   │   ├── drawer.ts           # Playlist management drawer & multi-list tabs
 │   │   ├── feed.ts             # Virtualized 3-slot feed manager & scroll coordinator
-│   │   ├── hud.ts              # Floating index indicator & controls
+│   │   ├── home.ts             # HomeScreen launchpad, playlist selector, dopamine shuffle
+│   │   ├── hud.ts              # Floating index indicator & controls (with Home button)
 │   │   ├── onboarding.ts       # Welcome screen with sample shorts loader
 │   │   ├── pause-indicator.ts  # Animated tap-to-pause visual overlay
 │   │   ├── replay-overlay.ts   # Video completion replay overlay
@@ -113,16 +122,18 @@ focus-scroll/
 │   │   └── url-parser.ts       # Robust YouTube URL and ID parser
 │   └── main.ts             # Application bootstrapper and lifecycle manager
 ├── tests/
-│   └── unit/               # Comprehensive unit test suites (49 tests)
+│   └── unit/               # Comprehensive unit test suites (61 tests)
 │       ├── drawer-scroll-multilist.test.ts
 │       ├── export-import.test.ts
 │       ├── gesture-math.test.ts
+│       ├── homescreen-and-consolidated-feed.test.ts
 │       ├── iframe-config.test.ts
 │       ├── multi-list.test.ts
 │       ├── navigation.test.ts
 │       ├── player-state.test.ts
 │       ├── storage.test.ts
-│       └── url-parser.test.ts
+│       ├── url-parser.test.ts
+│       └── version-control-and-onboarding.test.ts
 ├── index.html              # HTML entrypoint with PWA meta tags
 ├── package.json            # Project dependencies and npm scripts
 ├── tsconfig.json           # TypeScript configuration

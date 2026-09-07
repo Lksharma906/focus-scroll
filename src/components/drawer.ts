@@ -1005,6 +1005,10 @@ export class PlaylistDrawer {
     await renderList();
   }
 
+  openVersionControl(): void {
+    this.showVersionControlModal();
+  }
+
   async open(): Promise<void> {
     await this.refreshState();
     this.backdropElement.classList.add('open');

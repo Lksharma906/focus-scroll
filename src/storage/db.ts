@@ -268,6 +268,52 @@ export class StorageManager implements IStorageManager {
     }
   }
 
+  async getConsolidatedVideos(shuffle = false): Promise<VideoEntry[]> {
+    const store = await this.load();
+    const seen = new Set<string>();
+    const allVideos: VideoEntry[] = [];
+
+    for (const list of store.lists) {
+      for (const item of list.items) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          allVideos.push(item);
+        }
+      }
+    }
+
+    if (shuffle) {
+      const shuffled = [...allVideos];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    return allVideos;
+  }
+
+  async getFeedVideos(listId = 'default', shuffle = false): Promise<VideoEntry[]> {
+    if (listId === 'default') {
+      return this.getConsolidatedVideos(shuffle);
+    }
+    const store = await this.load();
+    const target = store.lists.find((l) => l.id === listId);
+    if (!target) {
+      return this.getConsolidatedVideos(shuffle);
+    }
+    if (shuffle) {
+      const shuffled = [...target.items];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+    return target.items;
+  }
+
   // --- Export / Import ---
 
   exportJSON(): string {

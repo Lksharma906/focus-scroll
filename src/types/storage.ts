@@ -64,6 +64,10 @@ export interface IStorageManager {
   switchList(listId: string): Promise<Playlist>;
   renameList(listId: string, newName: string): Promise<void>;
 
+  // Consolidated & feed support
+  getConsolidatedVideos(shuffle?: boolean): Promise<VideoEntry[]>;
+  getFeedVideos(listId?: string, shuffle?: boolean): Promise<VideoEntry[]>;
+
   // Version control support
   getVersions(): Promise<VersionSnapshot[]>;
   createVersion(tag?: string, description?: string): Promise<VersionSnapshot>;
