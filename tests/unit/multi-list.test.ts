@@ -115,4 +115,31 @@ describe('StorageManager Multi-List Management', () => {
     const updated = all.find((l) => l.id === list.id);
     expect(updated?.name).toBe('Fresh Brand New Name');
   });
+
+  it('backs up and restores all playlists and content seamlessly', async () => {
+    await storage.addItem({ id: 'mainVid0001', addedAt: Date.now() });
+    await storage.createList('Workout Motivation');
+    await storage.addItem({ id: 'workVid0001', addedAt: Date.now(), title: 'Lift Heavy' });
+    await storage.addItem({ id: 'workVid0002', addedAt: Date.now(), title: 'Cardio' });
+
+    // Full export
+    const backupJson = storage.exportJSON();
+    expect(backupJson).toContain('Workout Motivation');
+    expect(backupJson).toContain('workVid0001');
+
+    // Wipe store
+    await storage.clear();
+    const wipedLists = await storage.getLists();
+    expect(wipedLists.length).toBe(1);
+
+    // Restore backup
+    const importRes = await storage.importJSON(backupJson, 'replace');
+    expect(importRes.success).toBe(true);
+
+    const restoredLists = await storage.getLists();
+    expect(restoredLists.length).toBe(2);
+    expect(restoredLists.some((l) => l.name === 'Workout Motivation')).toBe(true);
+    const restoredWorkout = restoredLists.find((l) => l.name === 'Workout Motivation');
+    expect(restoredWorkout?.items.length).toBe(2);
+  });
 });

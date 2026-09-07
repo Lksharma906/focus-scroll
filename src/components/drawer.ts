@@ -3,6 +3,7 @@ import { triggerDownload } from '../storage/backup';
 import { parseVideoInput, fetchVideoTitle, extractAllVideoIds, getYoutubeThumbnail } from '../utils/url-parser';
 import { VideoEntry, Playlist } from '../types/storage';
 import { SAMPLE_BATCH_SHORTS } from '../storage/seed';
+import { APP_VERSION } from '../config/version';
 
 export interface DrawerCallbacks {
   onPlaylistUpdated: (items: VideoEntry[], targetIndex?: number) => void;
@@ -41,6 +42,14 @@ export class PlaylistDrawer {
           <span class="drawer-badge-count" id="drawer-total-count">0 videos</span>
         </div>
         <div class="drawer-header-actions">
+          <button type="button" class="btn-backup-header" id="btn-drawer-backup" title="Backup & Restore all playlists">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>Backup</span>
+          </button>
           <button type="button" class="btn-new-list" id="btn-toggle-new-list" title="Create new playlist">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -150,13 +159,27 @@ export class PlaylistDrawer {
               <path d="M12 3v6m0 6v6M3 12h6m6 0h6"></path>
             </svg>
             <span>Version Control</span>
-            <span class="app-version-tag">v1.0.0</span>
+            <span class="app-version-tag">v${APP_VERSION}</span>
           </button>
         </div>
 
         <div class="drawer-footer-actions">
-          <button type="button" class="btn-secondary export-btn" style="flex: 1;">Export JSON</button>
-          <button type="button" class="btn-secondary import-btn" style="flex: 1;">Import JSON</button>
+          <button type="button" class="btn-secondary btn-unified-backup" id="btn-backup-all" style="flex: 1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Backup All</span>
+          </button>
+          <button type="button" class="btn-secondary btn-unified-restore" id="btn-restore-all" style="flex: 1;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Restore All</span>
+          </button>
           <input type="file" class="file-input" accept=".json" style="display: none;" />
         </div>
       </div>
@@ -677,24 +700,27 @@ export class PlaylistDrawer {
     this.renderList(store.items, store.lastActiveIndex);
   }
 
-  // --- Backup & Restore ---
+  // --- Backup & Restore (All Playlists & Content) ---
 
   private setupBackupActions(): void {
-    const exportBtn = this.drawerElement.querySelector('.export-btn') as HTMLElement;
-    const importBtn = this.drawerElement.querySelector('.import-btn') as HTMLElement;
+    const backupHeaderBtn = this.drawerElement.querySelector('#btn-drawer-backup') as HTMLElement;
+    const backupAllBtn = this.drawerElement.querySelector('#btn-backup-all') as HTMLElement;
+    const restoreAllBtn = this.drawerElement.querySelector('#btn-restore-all') as HTMLElement;
     const fileInput = this.drawerElement.querySelector('.file-input') as HTMLInputElement;
 
-    exportBtn.addEventListener('click', () => {
-      const json = this.storage.exportJSON();
-      triggerDownload(json, `focusscroll-playlists-${new Date().toISOString().slice(0, 10)}.json`);
-      this.callbacks.onToast('Playlist exported');
+    backupHeaderBtn?.addEventListener('click', () => {
+      this.showBackupRestoreModal();
     });
 
-    importBtn.addEventListener('click', () => {
+    backupAllBtn?.addEventListener('click', () => {
+      this.downloadFullBackup();
+    });
+
+    restoreAllBtn?.addEventListener('click', () => {
       fileInput.click();
     });
 
-    fileInput.addEventListener('change', async () => {
+    fileInput?.addEventListener('change', async () => {
       const file = fileInput.files?.[0];
       if (!file) return;
 
@@ -708,33 +734,62 @@ export class PlaylistDrawer {
     });
   }
 
-  private async handleImportContent(jsonString: string): Promise<void> {
-    const store = await this.storage.load();
-    if (store.items.length === 0) {
-      const res = await this.storage.importJSON(jsonString, 'replace');
-      await this.finishImport(res);
-      return;
-    }
-
-    this.showImportChoiceModal(async (choice) => {
-      const res = await this.storage.importJSON(jsonString, choice);
-      await this.finishImport(res);
-    });
+  private downloadFullBackup(): void {
+    const json = this.storage.exportJSON();
+    triggerDownload(json, `focusscroll-all-playlists-${new Date().toISOString().slice(0, 10)}.json`);
+    this.callbacks.onToast('Complete backup downloaded (all playlists & video links)');
   }
 
-  private showImportChoiceModal(onChoice: (choice: 'replace' | 'merge') => void): void {
+  private async handleImportContent(jsonString: string): Promise<void> {
+    try {
+      const parsed = JSON.parse(jsonString);
+      const isUnified = Array.isArray(parsed.lists) && parsed.lists.length > 0;
+      const totalVideosInFile = isUnified
+        ? parsed.lists.reduce((acc: number, l: any) => acc + (Array.isArray(l.items) ? l.items.length : 0), 0)
+        : Array.isArray(parsed.playlist)
+        ? parsed.playlist.length
+        : 0;
+
+      const store = await this.storage.load();
+      const currentVideoCount = store.lists.reduce((acc, l) => acc + l.items.length, 0);
+
+      if (currentVideoCount === 0) {
+        const res = await this.storage.importJSON(jsonString, 'replace');
+        await this.finishImport(res);
+        return;
+      }
+
+      const modalTitle = isUnified ? 'Restore All Playlists' : 'Import Playlist';
+      const modalMessage = isUnified
+        ? `This backup contains ${parsed.lists.length} playlist(s) with ${totalVideosInFile} total video(s). Would you like to merge them with your current playlists, or replace all current playlists?`
+        : `Your current playlist has videos. Would you like to replace the entire list or merge the new items?`;
+
+      this.showImportChoiceModal(modalTitle, modalMessage, async (choice) => {
+        const res = await this.storage.importJSON(jsonString, choice);
+        await this.finishImport(res);
+      });
+    } catch {
+      this.callbacks.onToast('Failed to parse backup file');
+    }
+  }
+
+  private showImportChoiceModal(
+    title: string,
+    message: string,
+    onChoice: (choice: 'replace' | 'merge') => void
+  ): void {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-content">
-        <h3 style="font-size: 17px; font-weight: 600;">Import Playlist</h3>
-        <p style="font-size: 14px; color: #888;">
-          Your current playlist has videos. Would you like to replace the entire list or merge the new items?
+        <h3 style="font-size: 17px; font-weight: 600;">${title}</h3>
+        <p style="font-size: 14px; color: #888; line-height: 1.45; margin-top: 6px;">
+          ${message}
         </p>
         <div class="modal-actions">
           <button class="btn-secondary cancel-btn">Cancel</button>
           <button class="btn-secondary merge-btn">Merge</button>
-          <button class="btn-primary replace-btn">Replace</button>
+          <button class="btn-primary replace-btn">Replace All</button>
         </div>
       </div>
     `;
@@ -787,10 +842,118 @@ export class PlaylistDrawer {
       await this.refreshState();
       const store = await this.storage.load();
       this.callbacks.onPlaylistUpdated(store.items);
-      this.callbacks.onToast(`Imported ${res.importedCount} videos (${res.skippedCount} skipped)`);
+      this.callbacks.onToast(`Restored backup! (${res.importedCount} videos, ${res.skippedCount} skipped)`);
     } else {
       this.callbacks.onToast(res.error || 'Import failed');
     }
+  }
+
+  public async showBackupRestoreModal(): Promise<void> {
+    const store = await this.storage.load();
+    const lists = store.lists || [];
+    const totalVideos = (await this.storage.getConsolidatedVideos()).length;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="backup-modal-content">
+        <div class="version-modal-header">
+          <div class="version-modal-title-group">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span class="version-modal-title">Backup & Restore Playlists</span>
+          </div>
+          <button type="button" class="close-backup-modal-btn" style="font-size: 18px; color: #888; background: none; border: none; cursor: pointer; padding: 4px;">✕</button>
+        </div>
+
+        <div class="backup-modal-body">
+          <div class="backup-info-card">
+            <div style="font-weight: 600; font-size: 14px; color: #fff;">Unified Playlists Safeguard</div>
+            <div style="font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45;">
+              Back up all your custom playlists, video links, titles, and ordering into a single portable file.
+            </div>
+            <div class="backup-stat-row">
+              <span class="backup-stat-chip">📁 ${lists.length} playlist${lists.length === 1 ? '' : 's'}</span>
+              <span class="backup-stat-chip">🎬 ${totalVideos} total short${totalVideos === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+
+          <!-- Download Action -->
+          <div class="backup-action-card">
+            <div>
+              <div style="font-weight: 600; font-size: 13px; color: #fff;">1. Download Complete Backup</div>
+              <div style="font-size: 11px; color: #888; margin-top: 2px;">Exports all playlists and video URLs to JSON</div>
+            </div>
+            <button type="button" class="btn-primary" id="btn-modal-do-backup" style="margin-top: 8px; width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download Backup JSON</span>
+            </button>
+          </div>
+
+          <!-- Restore Action -->
+          <div class="backup-action-card">
+            <div>
+              <div style="font-weight: 600; font-size: 13px; color: #fff;">2. Restore from File</div>
+              <div style="font-size: 11px; color: #888; margin-top: 2px;">Import a backup to restore all playlists (replace or merge)</div>
+            </div>
+            <button type="button" class="btn-secondary" id="btn-modal-do-restore" style="margin-top: 8px; width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Choose Backup File to Restore...</span>
+            </button>
+            <input type="file" id="modal-backup-file-input" accept=".json" style="display: none;" />
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => {
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
+    };
+
+    modal.querySelector('.close-backup-modal-btn')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    modal.querySelector('#btn-modal-do-backup')?.addEventListener('click', () => {
+      this.downloadFullBackup();
+    });
+
+    const modalFileInput = modal.querySelector('#modal-backup-file-input') as HTMLInputElement;
+    modal.querySelector('#btn-modal-do-restore')?.addEventListener('click', () => {
+      modalFileInput.click();
+    });
+
+    modalFileInput?.addEventListener('change', () => {
+      const file = modalFileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const content = e.target?.result as string;
+        closeModal();
+        await this.handleImportContent(content);
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  openBackupRestore(): void {
+    this.showBackupRestoreModal();
   }
 
   private setupVersionControl(): void {
@@ -820,7 +983,7 @@ export class PlaylistDrawer {
           <!-- App Version info -->
           <div class="version-app-info-card">
             <div>
-              <div style="font-weight: 600; font-size: 13px; color: #fff;">FocusScroll v1.0.0</div>
+              <div style="font-weight: 600; font-size: 13px; color: #fff;">FocusScroll v${APP_VERSION}</div>
               <div style="font-size: 11px; color: #888; margin-top: 2px;">Offline PWA • Cloudflare Edge Build</div>
             </div>
             <button type="button" class="btn-secondary btn-sm" id="btn-check-updates" style="font-size: 11px;">Check for Updates</button>
@@ -888,7 +1051,7 @@ export class PlaylistDrawer {
             await reg.update();
           }
         }
-        this.callbacks.onToast('You are running the latest version (v1.0.0)');
+        this.callbacks.onToast(`You are running the latest version (v${APP_VERSION})`);
       } catch {
         this.callbacks.onToast('Version check complete');
       } finally {

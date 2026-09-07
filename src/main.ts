@@ -54,6 +54,9 @@ class App {
       onOpenVersionControl: () => {
         this.drawer.openVersionControl();
       },
+      onOpenBackupRestore: () => {
+        this.drawer.openBackupRestore();
+      },
       onLoadSamples: async () => {
         for (const item of SEED_SHORTS) {
           try {

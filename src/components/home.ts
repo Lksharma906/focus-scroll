@@ -1,10 +1,12 @@
 import { StorageManager } from '../storage/db';
 import { getYoutubeThumbnail } from '../utils/url-parser';
+import { APP_VERSION } from '../config/version';
 
 export interface HomeScreenCallbacks {
   onPlayFeed: (listId: string, shuffle?: boolean) => void;
   onOpenDrawer: (listId?: string) => void;
   onOpenVersionControl: () => void;
+  onOpenBackupRestore?: () => void;
   onLoadSamples: () => Promise<void>;
   onToast: (msg: string) => void;
 }
@@ -67,7 +69,7 @@ export class HomeScreen {
           </div>
           <div class="home-header-actions">
             <button type="button" class="home-version-btn" id="home-btn-version" title="Version Control & Snapshots">
-              <span>v1.0.0</span>
+              <span>v${APP_VERSION}</span>
             </button>
             <button type="button" class="home-icon-btn" id="home-btn-drawer" title="Manage Playlists">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -160,9 +162,19 @@ export class HomeScreen {
                 <h3 class="section-title">Playlists</h3>
                 <span class="section-count">${customLists.length} playlist${customLists.length === 1 ? '' : 's'}</span>
               </div>
-              <button type="button" class="btn-new-list-pill" id="home-btn-create-list" title="Create a new custom playlist">
-                <span>+ New List</span>
-              </button>
+              <div class="section-header-actions">
+                <button type="button" class="btn-backup-pill" id="home-btn-backup" title="Backup & Restore all playlists and video links">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  <span>Backup & Restore</span>
+                </button>
+                <button type="button" class="btn-new-list-pill" id="home-btn-create-list" title="Create a new custom playlist">
+                  <span>+ New List</span>
+                </button>
+              </div>
             </div>
 
             <div class="playlists-grid" id="home-playlists-grid">
@@ -193,18 +205,19 @@ export class HomeScreen {
                               <div class="playlist-card-meta">${count > 0 ? `${count} video${count === 1 ? '' : 's'}` : 'Empty List'}</div>
                             </div>
                             <div class="playlist-card-actions">
-                              ${
-                                count > 0
-                                  ? `<button type="button" class="btn-play-card" data-id="${list.id}" title="Play ${list.name}">
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                      </svg>
-                                      <span>Play</span>
-                                    </button>`
-                                  : `<button type="button" class="btn-add-card" data-id="${list.id}" title="Add videos">
-                                      <span>+ Add</span>
-                                    </button>`
-                              }
+                              <button type="button" class="btn-card-action btn-add-card" data-id="${list.id}" title="Add videos to ${list.name}">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                <span>Add</span>
+                              </button>
+                              <button type="button" class="btn-card-action btn-play-card ${count === 0 ? 'btn-play-card-empty' : ''}" data-id="${list.id}" title="${count > 0 ? `Play ${list.name}` : 'Add videos first'}">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                                <span>Play</span>
+                              </button>
                             </div>
                           </div>
                         `;
@@ -229,7 +242,7 @@ export class HomeScreen {
               </button>
             </div>
             <div class="footer-copy">
-              FocusScroll v1.0.0 • Offline PWA • Intentional YouTube Shorts
+              FocusScroll v${APP_VERSION} • Offline PWA • Intentional YouTube Shorts
             </div>
           </footer>
         </main>
@@ -278,6 +291,15 @@ export class HomeScreen {
       this.callbacks.onOpenDrawer();
     });
 
+    // Backup & Restore button
+    this.element.querySelector('#home-btn-backup')?.addEventListener('click', () => {
+      if (this.callbacks.onOpenBackupRestore) {
+        this.callbacks.onOpenBackupRestore();
+      } else {
+        this.callbacks.onOpenDrawer();
+      }
+    });
+
     // New List button
     this.element.querySelector('#home-btn-create-list')?.addEventListener('click', () => {
       this.callbacks.onOpenDrawer();
@@ -288,12 +310,30 @@ export class HomeScreen {
       const listId = (cardEl as HTMLElement).getAttribute('data-id');
       if (!listId) return;
 
-      cardEl.addEventListener('click', async (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('.btn-add-card')) {
-          e.stopPropagation();
+      // Click on Add button
+      cardEl.querySelector('.btn-add-card')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await this.storage.switchList(listId);
+        this.callbacks.onOpenDrawer(listId);
+      });
+
+      // Click on Play button
+      cardEl.querySelector('.btn-play-card')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const videos = (await this.storage.getLists()).find((l) => l.id === listId)?.items || [];
+        if (videos.length === 0) {
+          this.callbacks.onToast('Playlist is empty — add videos first!');
           await this.storage.switchList(listId);
           this.callbacks.onOpenDrawer(listId);
+        } else {
+          this.callbacks.onPlayFeed(listId, false);
+        }
+      });
+
+      // Click anywhere else on the card
+      cardEl.addEventListener('click', async (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('.btn-add-card') || target.closest('.btn-play-card')) {
           return;
         }
 

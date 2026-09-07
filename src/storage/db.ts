@@ -1,4 +1,5 @@
 import { get, set, del } from 'idb-keyval';
+import { APP_VERSION } from '../config/version';
 import { IStorageManager, PlaylistStore, VideoEntry, Playlist, ImportResult, VersionSnapshot } from '../types/storage';
 
 const STORAGE_KEY = 'focus_scroll_playlist_v1';
@@ -327,16 +328,30 @@ export class StorageManager implements IStorageManager {
     return target.items;
   }
 
-  // --- Export / Import ---
+  // --- Backup & Restore (All Playlists & Links) ---
 
   exportJSON(): string {
     const store = this.memoryCache || this.getDefaultStore();
     const payload = {
-      schema: '1.0.0',
+      schema: '1.0.1',
+      version: APP_VERSION,
       exportedAt: new Date().toISOString(),
-      playlist: store.items,
-      lists: store.lists,
-      activeListId: store.activeListId
+      activeListId: store.activeListId,
+      lists: store.lists.map((l) => ({
+        id: l.id,
+        name: l.name,
+        lastActiveIndex: l.lastActiveIndex || 0,
+        createdAt: l.createdAt || Date.now(),
+        updatedAt: l.updatedAt || Date.now(),
+        items: Array.isArray(l.items)
+          ? l.items.map((item) => ({
+              id: item.id,
+              addedAt: item.addedAt || Date.now(),
+              title: item.title
+            }))
+          : []
+      })),
+      playlist: store.items || []
     };
     return JSON.stringify(payload, null, 2);
   }
@@ -344,16 +359,16 @@ export class StorageManager implements IStorageManager {
   async importJSON(rawJson: string, mode: 'replace' | 'merge' = 'replace'): Promise<ImportResult> {
     try {
       const parsed = JSON.parse(rawJson);
-      if (!parsed || !parsed.schema || !Array.isArray(parsed.playlist)) {
+      if (!parsed || !parsed.schema || (!Array.isArray(parsed.playlist) && !Array.isArray(parsed.lists))) {
         return {
           success: false,
           importedCount: 0,
           skippedCount: 0,
-          error: 'Invalid file format: Missing schema or playlist array.'
+          error: 'Invalid file format: Missing schema, lists, or playlist array.'
         };
       }
 
-      const major = parsed.schema.split('.')[0];
+      const major = String(parsed.schema).split('.')[0];
       if (major !== '1') {
         return {
           success: false,
@@ -366,24 +381,128 @@ export class StorageManager implements IStorageManager {
       const store = await this.load();
       let importedCount = 0;
       let skippedCount = 0;
-      const validItems: VideoEntry[] = [];
       const idRegex = /^[a-zA-Z0-9_-]{11}$/;
 
-      for (const item of parsed.playlist) {
+      // Check if this is a unified multi-list backup
+      if (Array.isArray(parsed.lists) && parsed.lists.length > 0) {
+        const validatedLists: Playlist[] = [];
+
+        for (const rawList of parsed.lists) {
+          if (!rawList || typeof rawList.name !== 'string') continue;
+
+          const listItems: VideoEntry[] = [];
+          const seenInList = new Set<string>();
+
+          if (Array.isArray(rawList.items)) {
+            for (const item of rawList.items) {
+              if (item && typeof item.id === 'string' && idRegex.test(item.id)) {
+                if (!seenInList.has(item.id)) {
+                  seenInList.add(item.id);
+                  listItems.push({
+                    id: item.id,
+                    addedAt: typeof item.addedAt === 'number' ? item.addedAt : Date.now(),
+                    title: typeof item.title === 'string' ? item.title.slice(0, 100) : undefined
+                  });
+                } else {
+                  skippedCount++;
+                }
+              } else {
+                skippedCount++;
+              }
+            }
+          }
+
+          const cleanName = rawList.name.trim() || `Playlist ${validatedLists.length + 1}`;
+          const listId =
+            typeof rawList.id === 'string' && rawList.id
+              ? rawList.id
+              : `list_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+          validatedLists.push({
+            id: listId,
+            name: cleanName,
+            items: listItems,
+            lastActiveIndex: typeof rawList.lastActiveIndex === 'number' ? rawList.lastActiveIndex : 0,
+            createdAt: typeof rawList.createdAt === 'number' ? rawList.createdAt : Date.now(),
+            updatedAt: typeof rawList.updatedAt === 'number' ? rawList.updatedAt : Date.now()
+          });
+        }
+
+        if (validatedLists.length === 0) {
+          return {
+            success: false,
+            importedCount: 0,
+            skippedCount,
+            error: 'No valid playlists found in backup file.'
+          };
+        }
+
+        if (mode === 'replace') {
+          store.lists = validatedLists;
+          const targetActive = store.lists.find((l) => l.id === parsed.activeListId) || store.lists[0];
+          store.activeListId = targetActive.id;
+          store.items = targetActive.items;
+          store.lastActiveIndex = targetActive.lastActiveIndex || 0;
+
+          importedCount = validatedLists.reduce((sum, l) => sum + l.items.length, 0);
+        } else {
+          // Merge mode: merge each imported list into existing lists by ID or name
+          for (const incomingList of validatedLists) {
+            const existingList = store.lists.find(
+              (l) => l.id === incomingList.id || l.name.toLowerCase() === incomingList.name.toLowerCase()
+            );
+
+            if (existingList) {
+              const existingIds = new Set(existingList.items.map((i) => i.id));
+              for (const item of incomingList.items) {
+                if (!existingIds.has(item.id)) {
+                  existingIds.add(item.id);
+                  existingList.items.push(item);
+                  importedCount++;
+                } else {
+                  skippedCount++;
+                }
+              }
+              existingList.updatedAt = Date.now();
+            } else {
+              store.lists.push(incomingList);
+              importedCount += incomingList.items.length;
+            }
+          }
+
+          const currentActive = store.lists.find((l) => l.id === store.activeListId) || store.lists[0];
+          store.activeListId = currentActive.id;
+          store.items = currentActive.items;
+          store.lastActiveIndex = currentActive.lastActiveIndex || 0;
+        }
+
+        await this.save(store);
+        return {
+          success: true,
+          importedCount,
+          skippedCount
+        };
+      }
+
+      // Legacy fallback: single list import into the active list
+      const validItems: VideoEntry[] = [];
+      const legacyItems = Array.isArray(parsed.playlist) ? parsed.playlist : [];
+
+      for (const item of legacyItems) {
         if (item && typeof item.id === 'string' && idRegex.test(item.id)) {
-          const entry: VideoEntry = {
+          validItems.push({
             id: item.id,
             addedAt: typeof item.addedAt === 'number' ? item.addedAt : Date.now(),
             title: typeof item.title === 'string' ? item.title.slice(0, 100) : undefined
-          };
-          validItems.push(entry);
+          });
         } else {
           skippedCount++;
         }
       }
 
+      const activeList = store.lists.find((l) => l.id === store.activeListId) || store.lists[0];
+
       if (mode === 'replace') {
-        // Deduplicate validItems by id
         const uniqueMap = new Map<string, VideoEntry>();
         for (const item of validItems) {
           if (!uniqueMap.has(item.id)) {
@@ -394,9 +513,10 @@ export class StorageManager implements IStorageManager {
         }
         store.items = Array.from(uniqueMap.values());
         store.lastActiveIndex = 0;
+        activeList.items = store.items;
+        activeList.lastActiveIndex = 0;
         importedCount = store.items.length;
       } else {
-        // Merge mode: append unique IDs not in current store
         const existingIds = new Set(store.items.map((i) => i.id));
         for (const item of validItems) {
           if (!existingIds.has(item.id)) {
@@ -407,6 +527,7 @@ export class StorageManager implements IStorageManager {
             skippedCount++;
           }
         }
+        activeList.items = store.items;
       }
 
       await this.save(store);

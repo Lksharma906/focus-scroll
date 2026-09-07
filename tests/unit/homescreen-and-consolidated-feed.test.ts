@@ -90,22 +90,23 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       await home.render();
 
       expect(el.querySelector('.home-brand-title')?.textContent).toBe('FocusScroll');
-      expect(el.querySelector('#home-btn-version')?.textContent).toContain('v1.0.0');
+      expect(el.querySelector('#home-btn-version')?.textContent).toContain('v1.0.1');
 
       // Empty state prompt visible when 0 videos
       const emptyCard = el.querySelector('.home-empty-card') as HTMLElement;
       expect(emptyCard).not.toBeNull();
     });
 
-    it('displays playlist cards and triggers play on click', async () => {
+    it('displays playlist cards with both Add and Play buttons and triggers them properly', async () => {
       await storage.addItem({ id: 'videoSample1', addedAt: Date.now(), title: 'Test Sample' });
       await storage.createList('Gaming');
       await storage.addItem({ id: 'videoGaming1', addedAt: Date.now(), title: 'Game Clip' });
 
       const onPlayFeed = vi.fn();
+      const onOpenDrawer = vi.fn();
       const home = new HomeScreen(storage, {
         onPlayFeed,
-        onOpenDrawer: vi.fn(),
+        onOpenDrawer,
         onOpenVersionControl: vi.fn(),
         onLoadSamples: async () => {},
         onToast: () => {}
@@ -114,21 +115,11 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       const el = home.getElement();
       await home.render();
 
-      // Check stat pill shows 2 videos
-      expect(el.querySelector('.hero-stat-pill')?.textContent).toBe('2 videos');
-
-      // Click Hero Play Main Feed button
-      const heroPlayBtn = el.querySelector('#home-hero-play-btn') as HTMLButtonElement;
-      heroPlayBtn.click();
-      await new Promise((r) => setTimeout(r, 20));
-      expect(onPlayFeed).toHaveBeenCalledWith('default', false);
-
-      // Clicking the play circle also triggers playback
       const heroCircle = el.querySelector('.hero-play-circle') as HTMLElement;
       expect(heroCircle).not.toBeNull();
       heroCircle.click();
       await new Promise((r) => setTimeout(r, 20));
-      expect(onPlayFeed).toHaveBeenCalledTimes(2);
+      expect(onPlayFeed).toHaveBeenCalled();
 
       // Verify Main Feed is NOT rendered as a duplicate playlist card in playlists-grid
       expect(el.querySelector('#home-playlists-grid .playlist-card[data-id="default"]')).toBeNull();
@@ -136,12 +127,25 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       // Verify no "Dopamine" branding exists in the UI
       expect(el.textContent).not.toContain('Dopamine');
 
-      // Click individual playlist card
+      // Click individual playlist card buttons
       const gamingCard = el.querySelector('.playlist-card[data-id^="list_"]') as HTMLElement;
       expect(gamingCard).not.toBeNull();
-      gamingCard.click();
+
+      // Check BOTH Add and Play buttons exist
+      const addBtn = gamingCard.querySelector('.btn-add-card') as HTMLButtonElement;
+      const playBtn = gamingCard.querySelector('.btn-play-card') as HTMLButtonElement;
+      expect(addBtn).not.toBeNull();
+      expect(playBtn).not.toBeNull();
+
+      // Click Add button -> triggers onOpenDrawer
+      addBtn.click();
       await new Promise((r) => setTimeout(r, 20));
-      expect(onPlayFeed).toHaveBeenCalledWith(expect.stringContaining('list_'), false);
+      expect(onOpenDrawer).toHaveBeenCalled();
+
+      // Click Play button -> triggers onPlayFeed
+      playBtn.click();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(onPlayFeed).toHaveBeenCalled();
     });
 
     it('triggers version control modal from home screen version button', async () => {

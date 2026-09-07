@@ -62,10 +62,10 @@ describe('StorageManager', () => {
     expect(store.items[1].id).toBe('video111111');
   });
 
-  it('exports valid v1.0.0 JSON and re-imports with Replace mode', async () => {
+  it('exports valid v1.0.1 JSON and re-imports with Replace mode', async () => {
     await storage.addItem({ id: 'video111111', addedAt: Date.now() });
     const exported = storage.exportJSON();
-    expect(exported).toContain('"schema": "1.0.0"');
+    expect(exported).toContain('"schema": "1.0.1"');
     expect(exported).toContain('video111111');
 
     await storage.clear();
