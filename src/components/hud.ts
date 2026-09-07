@@ -1,10 +1,21 @@
+export interface HUDCallbacks {
+  onOpenDrawer: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
+}
+
 export class HUD {
   private element: HTMLElement;
   private positionPill: HTMLElement;
   private settingsBtn: HTMLElement;
+  private prevBtn: HTMLElement | null = null;
+  private nextBtn: HTMLElement | null = null;
   private fadeTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(onOpenDrawer: () => void) {
+  constructor(options: (() => void) | HUDCallbacks) {
+    const callbacks: HUDCallbacks =
+      typeof options === 'function' ? { onOpenDrawer: options } : options;
+
     this.element = document.createElement('div');
     this.element.className = 'hud-container';
 
@@ -22,14 +33,38 @@ export class HUD {
           </svg>
         </button>
       </div>
+      <div class="hud-nav-controls">
+        <button class="hud-btn hud-nav-btn prev-btn" aria-label="Previous video" title="Previous (↑ or k)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+        </button>
+        <button class="hud-btn hud-nav-btn next-btn" aria-label="Next video" title="Next (↓ or j)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
     `;
 
     this.positionPill = this.element.querySelector('.position-pill') as HTMLElement;
     this.settingsBtn = this.element.querySelector('.settings-toggle-btn') as HTMLElement;
+    this.prevBtn = this.element.querySelector('.prev-btn') as HTMLElement;
+    this.nextBtn = this.element.querySelector('.next-btn') as HTMLElement;
 
     this.settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      onOpenDrawer();
+      callbacks.onOpenDrawer();
+    });
+
+    this.prevBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onPrevious?.();
+    });
+
+    this.nextBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onNext?.();
     });
   }
 

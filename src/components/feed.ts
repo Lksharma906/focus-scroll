@@ -69,7 +69,38 @@ export class FeedManager {
     this.wrapperElement.appendChild(this.pauseIndicator.getElement());
 
     this.setupGestures();
+    window.addEventListener('keydown', this.handleKeyDown);
   }
+
+  private handleKeyDown = (e: KeyboardEvent): void => {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'j') {
+      e.preventDefault();
+      if (!this.isTransitioning) {
+        this.navigate('up');
+      }
+    } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k') {
+      e.preventDefault();
+      if (!this.isTransitioning) {
+        this.navigate('down');
+      }
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      if (this.player.isEnded()) {
+        this.player.replay();
+        this.replayOverlay.hide();
+      } else {
+        this.player.togglePlayPause();
+        if (this.player.getCurrentState() === 'PAUSED') {
+          this.pauseIndicator.trigger();
+        }
+      }
+    }
+  };
 
   async initialize(): Promise<void> {
     const store = await this.storage.load();
@@ -149,6 +180,57 @@ export class FeedManager {
     this.cardElement.style.transform = 'translateY(0px)';
   }
 
+  async goToIndex(targetIndex: number): Promise<void> {
+    if (this.playlist.length === 0) return;
+    const boundedIndex = Math.min(Math.max(targetIndex, 0), this.playlist.length - 1);
+    if (boundedIndex === this.currentIndex) {
+      this.loadActiveVideo();
+      return;
+    }
+
+    const direction = boundedIndex > this.currentIndex ? 'up' : 'down';
+    this.isTransitioning = true;
+    this.gestureEngine.lock();
+
+    const translateYOut = direction === 'up' ? '-100%' : '100%';
+    const translateYIn = direction === 'up' ? '100%' : '-100%';
+
+    this.cardElement.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    this.cardElement.style.transform = `translateY(${translateYOut})`;
+
+    setTimeout(async () => {
+      this.currentIndex = boundedIndex;
+      await this.storage.saveActiveIndex(this.currentIndex);
+      this.callbacks.onPositionChange(this.currentIndex + 1, this.playlist.length);
+
+      this.loadActiveVideo();
+
+      this.cardElement.style.transition = 'none';
+      this.cardElement.style.transform = `translateY(${translateYIn})`;
+      void this.cardElement.offsetHeight;
+
+      this.cardElement.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      this.cardElement.style.transform = 'translateY(0px)';
+
+      setTimeout(() => {
+        this.isTransitioning = false;
+        this.gestureEngine.unlock();
+      }, 250);
+    }, 250);
+  }
+
+  next(): void {
+    if (!this.isTransitioning) {
+      this.navigate('up');
+    }
+  }
+
+  previous(): void {
+    if (!this.isTransitioning) {
+      this.navigate('down');
+    }
+  }
+
   private async navigate(direction: 'up' | 'down'): Promise<void> {
     const { nextIndex, wrapped, bounced } = calculateNextIndex(
       this.currentIndex,
@@ -210,9 +292,19 @@ export class FeedManager {
     this.player.loadVideo(current.id);
   }
 
-  setPlaylist(items: VideoEntry[], newIndex = 0): void {
+  setPlaylist(items: VideoEntry[], targetIndex?: number): void {
+    const prevCurrentVideoId = this.playlist[this.currentIndex]?.id;
     this.playlist = items;
-    this.currentIndex = Math.min(Math.max(newIndex, 0), Math.max(items.length - 1, 0));
+
+    if (typeof targetIndex === 'number') {
+      this.currentIndex = Math.min(Math.max(targetIndex, 0), Math.max(items.length - 1, 0));
+    } else if (prevCurrentVideoId) {
+      const foundIndex = items.findIndex((i) => i.id === prevCurrentVideoId);
+      this.currentIndex = foundIndex !== -1 ? foundIndex : Math.min(this.currentIndex, Math.max(items.length - 1, 0));
+    } else {
+      this.currentIndex = 0;
+    }
+
     this.callbacks.onPositionChange(this.currentIndex + 1, this.playlist.length);
     if (this.playlist.length > 0) {
       this.loadActiveVideo();
@@ -226,6 +318,7 @@ export class FeedManager {
   }
 
   destroy(): void {
+    window.removeEventListener('keydown', this.handleKeyDown);
     this.gestureEngine.detach();
     this.player.destroy();
   }

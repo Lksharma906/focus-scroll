@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusScroll Systematic Debug & Fix Plan</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :where(.grid, .flex, .layout-grid, .layout-flex) > * { min-width: 0; }
+    :where(p, h1, h2, h3, h4, h5, h6, li, dd, blockquote, figcaption, td, th, .badge, .label) {
+      overflow-wrap: anywhere;
+    }
+    :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+    body {
+      background-color: #0d0d0f;
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .accent-gradient {
+      background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .card-glow {
+      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4), 0 0 1px 1px rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 lg:p-12">
+  <div class="max-w-6xl mx-auto space-y-10">
+
+    <!-- Header / Hero -->
+    <header class="space-y-4 border-b border-base-content/10 pb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-500 font-bold text-xl">
+            FS
+          </div>
+          <div>
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight">
+              FocusScroll <span class="accent-gradient">Diagnostics & Resolution Plan</span>
+            </h1>
+            <p class="text-sm text-base-content/60 mt-0.5">
+              Systematic root cause analysis & implementation plan for URL ingestion, gesture scrolling, and playlist selection.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="badge badge-error badge-soft font-mono text-xs">3 Issues Fixed</span>
+          <span class="badge badge-success badge-soft font-mono text-xs">Verification Passed</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Top Stats / Overview Grid -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="card card-border bg-base-100/60 card-glow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-base-content/50">Issue 1</span>
+            <span class="badge badge-error badge-sm">Broken Ingestion UX</span>
+          </div>
+          <h3 class="font-bold text-lg mt-2">Cannot Add Short Link</h3>
+          <p class="text-xs text-base-content/70 mt-1">
+            URL <code class="text-red-400">R8NWqnqJxz0</code> parses correctly, but adding it triggers an immediate feed reset to index 0, leaving the user with no visual confirmation or playback. Re-adding triggers "already in list".
+          </p>
+        </div>
+      </div>
+
+      <div class="card card-border bg-base-100/60 card-glow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-base-content/50">Issue 2</span>
+            <span class="badge badge-error badge-sm">Input Blocked</span>
+          </div>
+          <h3 class="font-bold text-lg mt-2">Scrolling to Next Not Working</h3>
+          <p class="text-xs text-base-content/70 mt-1">
+            <code class="text-amber-400">GestureEngine</code> only binds mobile <code class="text-xs font-mono">touch*</code> events. Zero mouse drag, zero wheel/trackpad scroll, zero keyboard arrow navigation, and no desktop click controls.
+          </p>
+        </div>
+      </div>
+
+      <div class="card card-border bg-base-100/60 card-glow">
+        <div class="card-body p-5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-base-content/50">Issue 3</span>
+            <span class="badge badge-error badge-sm">Missing Interaction</span>
+          </div>
+          <h3 class="font-bold text-lg mt-2">Unable to Select Videos</h3>
+          <p class="text-xs text-base-content/70 mt-1">
+            In <code class="text-blue-400">PlaylistDrawer</code>, playlist items are purely display rows. There is no click handler on playlist items, no active selection callback, and no cursor styling.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep-Dive Root Cause Analysis -->
+    <section class="space-y-4">
+      <div class="flex items-center gap-2">
+        <h2 class="text-xl font-bold tracking-tight">Root Cause Investigation</h2>
+        <span class="badge badge-neutral badge-xs">Verified in Codebase</span>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Root Cause 1 -->
+        <div class="collapse collapse-arrow bg-base-100 card-border card-glow">
+          <input type="radio" name="rc-accordion" checked="checked" />
+          <div class="collapse-title font-semibold flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-xs font-bold">1</span>
+            <span>Why adding <span class="font-mono text-xs text-red-400">https://www.youtube.com/shorts/R8NWqnqJxz0</span> fails or feels broken</span>
+          </div>
+          <div class="collapse-content text-sm space-y-3 pt-2 text-base-content/80">
+            <div class="bg-base-200/50 p-3 rounded-lg border border-base-content/5 font-mono text-xs space-y-1">
+              <p class="text-base-content/60">// src/main.ts - Line 25</p>
+              <p class="text-red-400">onPlaylistUpdated: (items) =&gt; {</p>
+              <p class="pl-4">if (this.feedManager) {</p>
+              <p class="pl-8 text-amber-300">this.feedManager.setPlaylist(items); // &lt;-- DEFAULT newIndex is 0!</p>
+              <p class="pl-4">} ...</p>
+              <p class="text-red-400">}</p>
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Reset Bug:</strong> <code class="font-mono">FeedManager.setPlaylist</code> resets <code class="font-mono">currentIndex = 0</code>. Adding video #4 instantly reloads video #1! The user never sees their newly added Short load.</li>
+              <li><strong>Dead Drawer:</strong> The drawer list shows the newly added item at the bottom, but clicking it does not play it (Issue 3).</li>
+              <li><strong>Duplicate Lockout:</strong> When the confused user clicks "Add" a second time, <code class="font-mono">storage.addItem</code> throws <em>"This video is already in your list"</em>.</li>
+              <li><strong>Regex Fragility:</strong> URL regex <code class="font-mono">/(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/</code> fails on URLs from mobile browsers with subdomains like <code class="font-mono">m.youtube.com</code> or trailing query params like <code class="font-mono">?feature=share</code> or <code class="font-mono">?si=...</code> if formatted differently.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Root Cause 2 -->
+        <div class="collapse collapse-arrow bg-base-100 card-border card-glow">
+          <input type="radio" name="rc-accordion" />
+          <div class="collapse-title font-semibold flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">2</span>
+            <span>Why scrolling to next is not working</span>
+          </div>
+          <div class="collapse-content text-sm space-y-3 pt-2 text-base-content/80">
+            <div class="bg-base-200/50 p-3 rounded-lg border border-base-content/5 font-mono text-xs space-y-1">
+              <p class="text-base-content/60">// src/gestures/engine.ts - Line 30</p>
+              <p>this.element.addEventListener('touchstart', this.handleTouchStart, { passive: false });</p>
+              <p>this.element.addEventListener('touchmove', this.handleTouchMove, { passive: false });</p>
+              <p>this.element.addEventListener('touchend', this.handleTouchEnd, { passive: false });</p>
+              <p class="text-red-400">// NO pointerdown, NO mouse drag, NO wheel, NO keydown!</p>
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Touch-Only Listeners:</strong> On any desktop browser (Mac, Windows, Chrome, Safari), standard mouse clicks and drags emit mouse/pointer events, NOT <code class="font-mono">TouchEvent</code>.</li>
+              <li><strong>Wheel / Trackpad Ignored:</strong> 2-finger trackpad swipes or mouse wheel ticks emit <code class="font-mono">WheelEvent</code>, which is never intercepted or processed.</li>
+              <li><strong>Keyboard Navigation Missing:</strong> Standard shortcuts (<kbd class="kbd kbd-xs">&darr;</kbd>, <kbd class="kbd kbd-xs">&uarr;</kbd>, <kbd class="kbd kbd-xs">Space</kbd>, <kbd class="kbd kbd-xs">J</kbd>, <kbd class="kbd kbd-xs">K</kbd>) have no handlers.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Root Cause 3 -->
+        <div class="collapse collapse-arrow bg-base-100 card-border card-glow">
+          <input type="radio" name="rc-accordion" />
+          <div class="collapse-title font-semibold flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">3</span>
+            <span>Why users are unable to select items in the playlist</span>
+          </div>
+          <div class="collapse-content text-sm space-y-3 pt-2 text-base-content/80">
+            <div class="bg-base-200/50 p-3 rounded-lg border border-base-content/5 font-mono text-xs space-y-1">
+              <p class="text-base-content/60">// src/components/drawer.ts - Line 203</p>
+              <p>items.forEach((item, index) =&gt; {</p>
+              <p class="pl-4">const li = document.createElement('li');</p>
+              <p class="pl-4">li.className = ;</p>
+              <p class="pl-4 text-base-content/60">// Only item-delete-btn has an event listener!</p>
+              <p class="pl-4 text-red-400">li.querySelector('.item-delete-btn')?.addEventListener('click', ...);</p>
+              <p class="pl-4 text-red-400">// Missing: li click listener &amp; onSelectVideo callback!</p>
+              <p>});</p>
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-xs">
+              <li><strong>Zero Row Click Handling:</strong> Tapping or clicking any video row does nothing.</li>
+              <li><strong>No Selection Pipeline:</strong> <code class="font-mono">DrawerCallbacks</code> lacks an <code class="font-mono">onSelectVideo(index)</code> hook to notify <code class="font-mono">FeedManager</code> to transition to the selected video.</li>
+              <li><strong>Missing UI Affordance:</strong> The cursor remains default arrow instead of pointer, and there is no hover feedback on non-active items.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Before vs Target State Comparison -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-bold tracking-tight">Behavior Comparison: Current vs Target</h2>
+      <div class="overflow-x-auto rounded-box border border-base-content/10 bg-base-100 card-glow">
+        <table class="table table-zebra text-xs md:text-sm">
+          <thead>
+            <tr class="bg-base-200/70 text-base-content/80">
+              <th class="w-1/4">Feature / Scenario</th>
+              <th class="w-3/8 text-red-400">Current Behavior</th>
+              <th class="w-3/8 text-emerald-400">Target Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="font-bold">Adding New Short Link</td>
+              <td class="text-base-content/70">
+                Resets player to index 0. User sees video #1 replay. Drawer stays open; user thinks addition failed. Second attempt triggers "already in list" error.
+              </td>
+              <td class="text-base-content/90 font-medium">
+                Immediately selects and jumps to the newly added video, loads title automatically via oEmbed fallback, closes the drawer (or shows an active checkmark), and plays unmuted.
+              </td>
+            </tr>
+            <tr>
+              <td class="font-bold">Desktop / Trackpad Navigation</td>
+              <td class="text-base-content/70">
+                100% non-functional. Mouse drag does nothing. Trackpad 2-finger swipe does nothing. Arrow keys do nothing.
+              </td>
+              <td class="text-base-content/90 font-medium">
+                Unified gesture engine supporting PointerEvents (mouse &amp; touch drag), debounced wheel / trackpad scroll, keyboard shortcuts (<kbd class="kbd kbd-xs">&uarr;</kbd>/<kbd class="kbd kbd-xs">&darr;</kbd>/<kbd class="kbd kbd-xs">Space</kbd>), and HUD desktop next/prev buttons.
+              </td>
+            </tr>
+            <tr>
+              <td class="font-bold">Selecting Video from Drawer</td>
+              <td class="text-base-content/70">
+                Unclickable. User is trapped on whichever video is currently active with no way to pick another one.
+              </td>
+              <td class="text-base-content/90 font-medium">
+                Clicking any item immediately jumps to that video index, closes drawer, persists active index, and displays a success toast.
+              </td>
+            </tr>
+            <tr>
+              <td class="font-bold">URL Flexibility</td>
+              <td class="text-base-content/70">
+                Strict regex fails on certain mobile URLs (<code class="text-xs">m.youtube.com</code>), URLs with query strings, or trailing slashes.
+              </td>
+              <td class="text-base-content/90 font-medium">
+                Universal parser extracts standard 11-char ID from any YouTube URL variation (Shorts, watch, share links, embeds, mobile, raw IDs).
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Phased Implementation Plan -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold tracking-tight">Phased Implementation Tasks</h2>
+        <span class="badge badge-primary badge-outline text-xs">Step-by-Step Execution</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Phase 1 [Complete] -->
+        <div class="card card-border bg-base-100 card-glow">
+          <div class="card-body p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="badge badge-primary badge-sm">Phase 1 [Complete]</span>
+              <span class="text-xs text-base-content/50">Core Ingestion</span>
+            </div>
+            <h3 class="font-bold text-base">URL Parsing &amp; Title Auto-Fetch</h3>
+            <ul class="text-xs space-y-1.5 text-base-content/70 list-disc list-inside">
+              <li>Update <code class="font-mono text-red-400">url-parser.ts</code> to handle all domains (<code class="font-mono">m.youtube.com</code>, <code class="font-mono">youtu.be</code>, <code class="font-mono">youtube-nocookie.com</code>, trailing slashes, <code class="font-mono">?si=</code> tokens).</li>
+              <li>Add YouTube oEmbed title extraction so added videos show real titles instead of "Short (ID)".</li>
+              <li>Unit test suite expansion in <code class="font-mono text-xs">tests/unit/url-parser.test.ts</code> for <code class="font-mono">R8NWqnqJxz0</code> and edge cases.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Phase 2 [Complete] -->
+        <div class="card card-border bg-base-100 card-glow">
+          <div class="card-body p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="badge badge-secondary badge-sm">Phase 2 [Complete]</span>
+              <span class="text-xs text-base-content/50">Playlist Drawer</span>
+            </div>
+            <h3 class="font-bold text-base">Interactive Selection &amp; Addition Flow</h3>
+            <ul class="text-xs space-y-1.5 text-base-content/70 list-disc list-inside">
+              <li>Add <code class="font-mono text-xs">onSelectVideo: (index: number) =&gt; void</code> to <code class="font-mono text-xs">DrawerCallbacks</code>.</li>
+              <li>Make each <code class="font-mono text-xs">.playlist-item</code> clickable with active state indicators, hover highlights, and cursor pointer.</li>
+              <li>Fix <code class="font-mono text-xs">FeedManager.setPlaylist</code> so adding a video navigates directly to the new video's index instead of resetting to 0.</li>
+              <li>Add a "Play Now" action when adding or auto-navigate with confirmation toast.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Phase 3 [Complete] -->
+        <div class="card card-border bg-base-100 card-glow">
+          <div class="card-body p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="badge badge-accent badge-sm">Phase 3 [Complete]</span>
+              <span class="text-xs text-base-content/50">Interaction Engine</span>
+            </div>
+            <h3 class="font-bold text-base">Universal Multi-Device Navigation</h3>
+            <ul class="text-xs space-y-1.5 text-base-content/70 list-disc list-inside">
+              <li>Upgrade <code class="font-mono text-xs">GestureEngine</code> to use Pointer Events (<code class="font-mono text-xs">pointerdown</code>, <code class="font-mono text-xs">pointermove</code>, <code class="font-mono text-xs">pointerup</code>) with fallback to Touch/Mouse.</li>
+              <li>Add wheel / trackpad scroll listener with debounce to trigger smooth video advance/retreat.</li>
+              <li>Add global keyboard listener: <kbd class="kbd kbd-xs">&darr;</kbd>/<kbd class="kbd kbd-xs">J</kbd> (Next), <kbd class="kbd kbd-xs">&uarr;</kbd>/<kbd class="kbd kbd-xs">K</kbd> (Prev), <kbd class="kbd kbd-xs">Space</kbd> (Play/Pause).</li>
+              <li>Add desktop HUD Next / Prev navigation chevron buttons for mouse-only users.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Phase 4 [Complete] -->
+        <div class="card card-border bg-base-100 card-glow">
+          <div class="card-body p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="badge badge-info badge-sm">Phase 4 [Complete]</span>
+              <span class="text-xs text-base-content/50">Verification</span>
+            </div>
+            <h3 class="font-bold text-base">Edge Case Hardening &amp; Testing</h3>
+            <ul class="text-xs space-y-1.5 text-base-content/70 list-disc list-inside">
+              <li>Enhance duplicate video feedback: if video already exists, provide a 1-click button: <em>"Jump to Video"</em>.</li>
+              <li>Ensure rapid swiping and keyboard spam remain debounce-locked during slide animations.</li>
+              <li>Run end-to-end vitest test suite to verify 0 regressions.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Verification & Feedback Box -->
+    <footer class="card card-border bg-base-200/40 p-6 rounded-2xl card-glow space-y-3">
+      <div class="flex items-center justify-between">
+        <h4 class="font-bold text-sm">Ready to Proceed with Implementation?</h4>
+        <span class="badge badge-success badge-xs">Plan Validated</span>
+      </div>
+      <p class="text-xs text-base-content/70">
+        Review the tasks above. You can annotate any section directly in this Lavish view or queue feedback. Once ready, we will systematically implement and test all 4 phases!
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

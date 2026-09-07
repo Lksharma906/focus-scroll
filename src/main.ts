@@ -22,18 +22,27 @@ class App {
     this.spinner = new BufferingSpinner();
 
     this.drawer = new PlaylistDrawer(storage, {
-      onPlaylistUpdated: (items) => {
+      onPlaylistUpdated: (items, targetIndex) => {
         if (this.feedManager) {
-          this.feedManager.setPlaylist(items);
+          this.feedManager.setPlaylist(items, targetIndex);
         } else if (items.length > 0) {
+          this.startFeed();
+        }
+      },
+      onSelectVideo: (index) => {
+        if (this.feedManager) {
+          this.feedManager.goToIndex(index);
+        } else {
           this.startFeed();
         }
       },
       onToast: (msg) => this.toast.show(msg)
     });
 
-    this.hud = new HUD(() => {
-      this.drawer.open();
+    this.hud = new HUD({
+      onOpenDrawer: () => this.drawer.open(),
+      onNext: () => this.feedManager?.next(),
+      onPrevious: () => this.feedManager?.previous()
     });
 
     this.onboarding = new OnboardingScreen(
@@ -100,6 +109,11 @@ class App {
 
 // Start application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+  // Request permanent storage from browser (iOS Safari / Android Chrome)
+  if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+
   const app = new App();
   app.start();
 });

@@ -8,11 +8,22 @@ export interface VideoEntry {
   title?: string;
 }
 
+export interface Playlist {
+  id: string;
+  name: string;
+  items: VideoEntry[];
+  lastActiveIndex: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface PlaylistStore {
   version: number;
   items: VideoEntry[];
   lastActiveIndex: number;
   updatedAt: number;
+  activeListId: string;
+  lists: Playlist[];
 }
 
 export interface ImportResult {
@@ -29,6 +40,14 @@ export interface IStorageManager {
   reorder(fromIndex: number, toIndex: number): Promise<void>;
   saveActiveIndex(index: number): Promise<void>;
   exportJSON(): string;
-  importJSON(rawJson: string): Promise<ImportResult>;
+  importJSON(rawJson: string, mode?: 'replace' | 'merge'): Promise<ImportResult>;
   clear(): Promise<void>;
+
+  // Multi-list support
+  getLists(): Promise<Playlist[]>;
+  getActiveList(): Promise<Playlist>;
+  createList(name: string): Promise<Playlist>;
+  deleteList(listId: string): Promise<Playlist>;
+  switchList(listId: string): Promise<Playlist>;
+  renameList(listId: string, newName: string): Promise<void>;
 }

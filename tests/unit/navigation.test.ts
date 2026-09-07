@@ -31,4 +31,12 @@ describe('Playlist Navigation Boundaries', () => {
     expect(wrapped).toBe(false);
     expect(bounced).toBe(true);
   });
+
+  it('clamps and bounds direct index selection', () => {
+    const clamp = (target: number, total: number) => Math.min(Math.max(target, 0), Math.max(total - 1, 0));
+    expect(clamp(-1, playlistLength)).toBe(0);
+    expect(clamp(3, playlistLength)).toBe(3);
+    expect(clamp(10, playlistLength)).toBe(4);
+    expect(clamp(0, 0)).toBe(0);
+  });
 });

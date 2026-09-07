@@ -1,5 +1,5 @@
 import { get, set, del } from 'idb-keyval';
-import { IStorageManager, PlaylistStore, VideoEntry, ImportResult } from '../types/storage';
+import { IStorageManager, PlaylistStore, VideoEntry, Playlist, ImportResult } from '../types/storage';
 
 const STORAGE_KEY = 'focus_scroll_playlist_v1';
 
@@ -7,11 +7,64 @@ export class StorageManager implements IStorageManager {
   private memoryCache: PlaylistStore | null = null;
 
   private getDefaultStore(): PlaylistStore {
+    const defaultList: Playlist = {
+      id: 'default',
+      name: 'Main Feed',
+      items: [],
+      lastActiveIndex: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
     return {
       version: 1,
       items: [],
       lastActiveIndex: 0,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      activeListId: 'default',
+      lists: [defaultList]
+    };
+  }
+
+  private normalizeStore(store: Partial<PlaylistStore>): PlaylistStore {
+    const rawLists = Array.isArray(store.lists) && store.lists.length > 0 ? store.lists : [];
+    let lists: Playlist[];
+
+    if (rawLists.length === 0) {
+      const defaultList: Playlist = {
+        id: 'default',
+        name: 'Main Feed',
+        items: Array.isArray(store.items) ? store.items : [],
+        lastActiveIndex: typeof store.lastActiveIndex === 'number' ? store.lastActiveIndex : 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      lists = [defaultList];
+    } else {
+      lists = rawLists.map((list) => ({
+        id: list.id || `list_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: list.name || 'Untitled List',
+        items: Array.isArray(list.items) ? list.items : [],
+        lastActiveIndex: typeof list.lastActiveIndex === 'number' ? list.lastActiveIndex : 0,
+        createdAt: typeof list.createdAt === 'number' ? list.createdAt : Date.now(),
+        updatedAt: typeof list.updatedAt === 'number' ? list.updatedAt : Date.now()
+      }));
+    }
+
+    let activeListId = store.activeListId;
+    let activeList = lists.find((l) => l.id === activeListId);
+    if (!activeList) {
+      activeList = lists[0];
+      activeListId = activeList.id;
+    }
+
+    return {
+      version: store.version || 1,
+      items: activeList.items,
+      lastActiveIndex: activeList.lastActiveIndex,
+      updatedAt: store.updatedAt || Date.now(),
+      activeListId: activeList.id,
+      lists
     };
   }
 
@@ -21,10 +74,11 @@ export class StorageManager implements IStorageManager {
     }
 
     try {
-      const data = await get<PlaylistStore>(STORAGE_KEY);
-      if (data && Array.isArray(data.items)) {
-        this.memoryCache = data;
-        return data;
+      const data = await get<Partial<PlaylistStore>>(STORAGE_KEY);
+      if (data && (Array.isArray(data.items) || Array.isArray(data.lists))) {
+        const normalized = this.normalizeStore(data);
+        this.memoryCache = normalized;
+        return normalized;
       }
     } catch {
       // Fallback to localStorage
@@ -33,10 +87,11 @@ export class StorageManager implements IStorageManager {
     try {
       const localData = localStorage.getItem(STORAGE_KEY);
       if (localData) {
-        const parsed = JSON.parse(localData) as PlaylistStore;
-        if (parsed && Array.isArray(parsed.items)) {
-          this.memoryCache = parsed;
-          return parsed;
+        const parsed = JSON.parse(localData) as Partial<PlaylistStore>;
+        if (parsed && (Array.isArray(parsed.items) || Array.isArray(parsed.lists))) {
+          const normalized = this.normalizeStore(parsed);
+          this.memoryCache = normalized;
+          return normalized;
         }
       }
     } catch {
@@ -50,6 +105,15 @@ export class StorageManager implements IStorageManager {
 
   async save(store: PlaylistStore): Promise<void> {
     store.updatedAt = Date.now();
+
+    // Keep active list in sync
+    const activeList = store.lists.find((l) => l.id === store.activeListId);
+    if (activeList) {
+      activeList.items = store.items;
+      activeList.lastActiveIndex = store.lastActiveIndex;
+      activeList.updatedAt = store.updatedAt;
+    }
+
     this.memoryCache = store;
 
     try {
@@ -112,12 +176,107 @@ export class StorageManager implements IStorageManager {
     }
   }
 
+  // --- Multi-list Management ---
+
+  async getLists(): Promise<Playlist[]> {
+    const store = await this.load();
+    return store.lists;
+  }
+
+  async getActiveList(): Promise<Playlist> {
+    const store = await this.load();
+    const active = store.lists.find((l) => l.id === store.activeListId);
+    return active || store.lists[0];
+  }
+
+  async createList(name: string): Promise<Playlist> {
+    const store = await this.load();
+    const cleanName = name.trim() || `Playlist ${store.lists.length + 1}`;
+    const newList: Playlist = {
+      id: `list_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: cleanName,
+      items: [],
+      lastActiveIndex: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    store.lists.push(newList);
+    store.activeListId = newList.id;
+    store.items = newList.items;
+    store.lastActiveIndex = newList.lastActiveIndex;
+    await this.save(store);
+    return newList;
+  }
+
+  async deleteList(listId: string): Promise<Playlist> {
+    const store = await this.load();
+    if (store.lists.length <= 1) {
+      throw new Error('Cannot delete the only list');
+    }
+
+    const index = store.lists.findIndex((l) => l.id === listId);
+    if (index === -1) {
+      throw new Error('List not found');
+    }
+
+    store.lists.splice(index, 1);
+
+    if (store.activeListId === listId) {
+      const fallbackList = store.lists[0];
+      store.activeListId = fallbackList.id;
+      store.items = fallbackList.items;
+      store.lastActiveIndex = fallbackList.lastActiveIndex;
+    }
+
+    await this.save(store);
+    return this.getActiveList();
+  }
+
+  async switchList(listId: string): Promise<Playlist> {
+    const store = await this.load();
+    const target = store.lists.find((l) => l.id === listId);
+    if (!target) {
+      throw new Error('List not found');
+    }
+
+    // Save current active items state
+    const current = store.lists.find((l) => l.id === store.activeListId);
+    if (current) {
+      current.items = store.items;
+      current.lastActiveIndex = store.lastActiveIndex;
+    }
+
+    store.activeListId = target.id;
+    store.items = target.items;
+    store.lastActiveIndex = target.lastActiveIndex;
+    await this.save(store);
+    return target;
+  }
+
+  async renameList(listId: string, newName: string): Promise<void> {
+    const cleanName = newName.trim();
+    if (!cleanName) return;
+
+    const store = await this.load();
+    const target = store.lists.find((l) => l.id === listId);
+    if (target) {
+      target.name = cleanName;
+      target.updatedAt = Date.now();
+      await this.save(store);
+    }
+  }
+
+  // --- Export / Import ---
+
   exportJSON(): string {
     const store = this.memoryCache || this.getDefaultStore();
     const payload = {
       schema: '1.0.0',
       exportedAt: new Date().toISOString(),
-      playlist: store.items
+      playlist: store.items,
+      lists: store.lists,
+      activeListId: store.activeListId
     };
     return JSON.stringify(payload, null, 2);
   }
