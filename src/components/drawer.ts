@@ -8,6 +8,7 @@ export interface DrawerCallbacks {
   onPlaylistUpdated: (items: VideoEntry[], targetIndex?: number) => void;
   onSelectVideo: (index: number) => void;
   onToast: (msg: string) => void;
+  onClose?: () => void;
 }
 
 export class PlaylistDrawer {
@@ -47,7 +48,7 @@ export class PlaylistDrawer {
             </svg>
             <span>New List</span>
           </button>
-          <button class="drawer-close" aria-label="Close drawer">✕</button>
+          <button class="drawer-close" aria-label="Back / Close drawer" title="Back / Close">✕</button>
         </div>
       </div>
 
@@ -141,10 +142,21 @@ export class PlaylistDrawer {
           <ul class="playlist-list" id="playlist-items-ul"></ul>
         </div>
 
-        <!-- Backup actions at bottom -->
+        <!-- Version Control & Backup actions at bottom -->
+        <div class="drawer-version-row">
+          <button type="button" class="btn-version-modal" id="btn-open-version-modal" title="Version Control & Snapshots">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 3v6m0 6v6M3 12h6m6 0h6"></path>
+            </svg>
+            <span>Version Control</span>
+            <span class="app-version-tag">v1.0.0</span>
+          </button>
+        </div>
+
         <div class="drawer-footer-actions">
-          <button class="btn-secondary export-btn" style="flex: 1;">Export JSON</button>
-          <button class="btn-secondary import-btn" style="flex: 1;">Import JSON</button>
+          <button type="button" class="btn-secondary export-btn" style="flex: 1;">Export JSON</button>
+          <button type="button" class="btn-secondary import-btn" style="flex: 1;">Import JSON</button>
           <input type="file" class="file-input" accept=".json" style="display: none;" />
         </div>
       </div>
@@ -156,6 +168,7 @@ export class PlaylistDrawer {
     this.setupPlaylistTabs();
     this.setupVideoInput();
     this.setupBackupActions();
+    this.setupVersionControl();
   }
 
   getElements(): { backdrop: HTMLElement; drawer: HTMLElement } {
@@ -780,6 +793,218 @@ export class PlaylistDrawer {
     }
   }
 
+  private setupVersionControl(): void {
+    const btn = this.drawerElement.querySelector('#btn-open-version-modal');
+    btn?.addEventListener('click', () => {
+      this.showVersionControlModal();
+    });
+  }
+
+  private async showVersionControlModal(): Promise<void> {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="version-modal-content">
+        <div class="version-modal-header">
+          <div class="version-modal-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 3v6m0 6v6M3 12h6m6 0h6"></path>
+            </svg>
+            <span class="version-modal-title">Version Control & Snapshots</span>
+          </div>
+          <button type="button" class="close-version-modal-btn" style="font-size: 18px; color: #888; background: none; border: none; cursor: pointer; padding: 4px;">✕</button>
+        </div>
+
+        <div class="version-modal-body">
+          <!-- App Version info -->
+          <div class="version-app-info-card">
+            <div>
+              <div style="font-weight: 600; font-size: 13px; color: #fff;">FocusScroll v1.0.0</div>
+              <div style="font-size: 11px; color: #888; margin-top: 2px;">Offline PWA • Cloudflare Edge Build</div>
+            </div>
+            <button type="button" class="btn-secondary btn-sm" id="btn-check-updates" style="font-size: 11px;">Check for Updates</button>
+          </div>
+
+          <!-- Create Checkpoint -->
+          <div class="version-create-box">
+            <div style="font-weight: 600; font-size: 12px; color: #ccc;">Create Snapshot Checkpoint</div>
+            <input
+              type="text"
+              class="input-field"
+              id="version-tag-input"
+              placeholder="Tag (e.g., v1.1, Gym Playlist, Pre-Clean)..."
+              style="padding: 8px 10px; font-size: 12px;"
+              maxlength="40"
+            />
+            <input
+              type="text"
+              class="input-field"
+              id="version-desc-input"
+              placeholder="Optional notes or description..."
+              style="padding: 8px 10px; font-size: 12px;"
+              maxlength="80"
+            />
+            <button type="button" class="btn-primary btn-sm" id="btn-create-checkpoint" style="align-self: flex-end; margin-top: 4px;">
+              + Save Checkpoint
+            </button>
+          </div>
+
+          <!-- Version History -->
+          <div>
+            <div style="font-weight: 600; font-size: 12px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Snapshot History & Rollbacks
+            </div>
+            <div class="version-history-list" id="version-history-container">
+              <div style="color: #666; font-size: 12px; text-align: center; padding: 12px;">Loading versions...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => {
+      if (document.body.contains(modal)) {
+        document.body.removeChild(modal);
+      }
+    };
+
+    modal.querySelector('.close-version-modal-btn')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Check updates button
+    modal.querySelector('#btn-check-updates')?.addEventListener('click', async () => {
+      const updateBtn = modal.querySelector('#btn-check-updates') as HTMLButtonElement;
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Checking...';
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            await reg.update();
+          }
+        }
+        this.callbacks.onToast('You are running the latest version (v1.0.0)');
+      } catch {
+        this.callbacks.onToast('Version check complete');
+      } finally {
+        updateBtn.disabled = false;
+        updateBtn.textContent = 'Check for Updates';
+      }
+    });
+
+    const tagInput = modal.querySelector('#version-tag-input') as HTMLInputElement;
+    const descInput = modal.querySelector('#version-desc-input') as HTMLInputElement;
+    const createBtn = modal.querySelector('#btn-create-checkpoint') as HTMLButtonElement;
+    const historyContainer = modal.querySelector('#version-history-container') as HTMLElement;
+
+    const renderList = async () => {
+      const versions = await this.storage.getVersions();
+      historyContainer.innerHTML = '';
+
+      if (versions.length === 0) {
+        historyContainer.innerHTML = '<div style="color: #666; font-size: 12px; text-align: center; padding: 12px;">No saved versions yet.</div>';
+        return;
+      }
+
+      versions.forEach((v) => {
+        const card = document.createElement('div');
+        card.className = 'version-item-card';
+
+        const timeStr = new Date(v.createdAt).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        card.innerHTML = `
+          <div class="version-item-header">
+            <span class="version-item-tag">${v.tag}</span>
+            <span class="version-item-time">${timeStr}</span>
+          </div>
+          ${v.description ? `<div style="font-size: 12px; color: #ddd;">${v.description}</div>` : ''}
+          <div class="version-item-summary">
+            ${v.summary.totalLists} list${v.summary.totalLists === 1 ? '' : 's'} • ${v.summary.totalVideos} video${v.summary.totalVideos === 1 ? '' : 's'} • Active: <span style="color: #fff;">${v.summary.activeListName}</span>
+          </div>
+          <div class="version-item-actions">
+            <button type="button" class="btn-restore-version" data-id="${v.id}">Restore</button>
+            <button type="button" class="btn-export-version" data-id="${v.id}">Export</button>
+            <button type="button" class="btn-delete-version" data-id="${v.id}">Delete</button>
+          </div>
+        `;
+
+        // Restore button
+        card.querySelector('.btn-restore-version')?.addEventListener('click', () => {
+          this.showConfirmModal(
+            `Restore "${v.tag}"?`,
+            `This will roll back your current playlists and videos to this checkpoint (${v.summary.totalVideos} videos across ${v.summary.totalLists} lists).`,
+            'Restore Version',
+            async () => {
+              try {
+                const restoredStore = await this.storage.restoreVersion(v.id);
+                closeModal();
+                await this.refreshState();
+                this.callbacks.onPlaylistUpdated(restoredStore.items, restoredStore.lastActiveIndex);
+                this.callbacks.onToast(`Restored version "${v.tag}"`);
+              } catch (err) {
+                this.callbacks.onToast(err instanceof Error ? err.message : 'Restore failed');
+              }
+            }
+          );
+        });
+
+        // Export button
+        card.querySelector('.btn-export-version')?.addEventListener('click', () => {
+          const json = JSON.stringify(v.data, null, 2);
+          const safeTag = v.tag.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+          triggerDownload(json, `focus-scroll-version-${safeTag}.json`);
+          this.callbacks.onToast(`Exported version "${v.tag}"`);
+        });
+
+        // Delete button
+        card.querySelector('.btn-delete-version')?.addEventListener('click', () => {
+          this.showConfirmModal(
+            `Delete version "${v.tag}"?`,
+            'Are you sure? This checkpoint will be removed from your snapshot history.',
+            'Delete Snapshot',
+            async () => {
+              await this.storage.deleteVersion(v.id);
+              await renderList();
+              this.callbacks.onToast(`Deleted "${v.tag}"`);
+            }
+          );
+        });
+
+        historyContainer.appendChild(card);
+      });
+    };
+
+    createBtn.addEventListener('click', async () => {
+      const tag = tagInput.value.trim();
+      const desc = descInput.value.trim();
+      createBtn.disabled = true;
+
+      try {
+        const created = await this.storage.createVersion(tag, desc);
+        tagInput.value = '';
+        descInput.value = '';
+        await renderList();
+        this.callbacks.onToast(`Saved checkpoint "${created.tag}"`);
+      } catch (err) {
+        this.callbacks.onToast(err instanceof Error ? err.message : 'Failed to create checkpoint');
+      } finally {
+        createBtn.disabled = false;
+      }
+    });
+
+    await renderList();
+  }
+
   async open(): Promise<void> {
     await this.refreshState();
     this.backdropElement.classList.add('open');
@@ -789,5 +1014,6 @@ export class PlaylistDrawer {
   close(): void {
     this.backdropElement.classList.remove('open');
     this.drawerElement.classList.remove('open');
+    this.callbacks.onClose?.();
   }
 }

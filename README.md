@@ -47,7 +47,13 @@ FocusScroll is a lightweight, mobile-first web application engineered to break t
 * **Replay & Loop Controls**: Visual replay overlay when a short ends, allowing loop or quick swipe to the next item.
 * **Error Resilience**: Catches embedding restrictions (YouTube errors 101/150) and provides direct fallback links without crashing the feed.
 
-### 6. Robust Offline Persistence & Data Portability
+### 6. Version Control & Snapshot History
+* **Git-Like Snapshot Checkpoints**: Save custom checkpoints of your playlists and videos (e.g. `v1.1 - Workout Pack`, `Before Cleanup`).
+* **One-Click Rollbacks**: Restore your full library state to any previous version with automated state recovery and toast feedback.
+* **App Version & Update Checker**: Directly view current app version (`v1.0.0`) and trigger PWA service worker update checks on the fly.
+* **Checkpoint Portability**: Export individual snapshots or delete outdated checkpoints directly from the Version Control panel.
+
+### 7. Robust Offline Persistence & Data Portability
 * **Persistent Storage Backing**: Uses IndexedDB via `idb-keyval` with automatic fallback to `localStorage` and memory caching.
 * **Storage Eviction Prevention**: Requests persistent storage permission (`navigator.storage.persist()`) on launch to avoid browser eviction on iOS Safari.
 * **Export & Import**: Export your complete library and playlists to a `.json` backup file, or restore existing backups anytime.

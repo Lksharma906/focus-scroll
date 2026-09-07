@@ -24,7 +24,6 @@ export class OnboardingScreen {
     });
 
     this.element.querySelector('.add-first-btn')?.addEventListener('click', () => {
-      this.hide();
       onOpenDrawer();
     });
   }

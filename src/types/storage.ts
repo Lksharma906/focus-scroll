@@ -33,6 +33,19 @@ export interface ImportResult {
   error?: string;
 }
 
+export interface VersionSnapshot {
+  id: string;
+  tag: string;
+  description?: string;
+  createdAt: number;
+  data: PlaylistStore;
+  summary: {
+    totalLists: number;
+    totalVideos: number;
+    activeListName: string;
+  };
+}
+
 export interface IStorageManager {
   load(): Promise<PlaylistStore>;
   addItem(entry: VideoEntry): Promise<void>;
@@ -50,4 +63,10 @@ export interface IStorageManager {
   deleteList(listId: string): Promise<Playlist>;
   switchList(listId: string): Promise<Playlist>;
   renameList(listId: string, newName: string): Promise<void>;
+
+  // Version control support
+  getVersions(): Promise<VersionSnapshot[]>;
+  createVersion(tag?: string, description?: string): Promise<VersionSnapshot>;
+  restoreVersion(versionId: string): Promise<PlaylistStore>;
+  deleteVersion(versionId: string): Promise<void>;
 }

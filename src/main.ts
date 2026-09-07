@@ -23,9 +23,17 @@ class App {
 
     this.drawer = new PlaylistDrawer(storage, {
       onPlaylistUpdated: (items, targetIndex) => {
-        if (this.feedManager) {
+        if (items.length === 0) {
+          if (this.feedManager) {
+            this.feedManager.setPlaylist(items, targetIndex);
+          } else {
+            this.root.innerHTML = '';
+            this.root.appendChild(this.onboarding.getElement());
+            this.onboarding.show();
+          }
+        } else if (this.feedManager) {
           this.feedManager.setPlaylist(items, targetIndex);
-        } else if (items.length > 0) {
+        } else {
           this.startFeed();
         }
       },
@@ -36,7 +44,22 @@ class App {
           this.startFeed();
         }
       },
-      onToast: (msg) => this.toast.show(msg)
+      onToast: (msg) => this.toast.show(msg),
+      onClose: async () => {
+        const store = await storage.load();
+        const activeList = store.lists.find((l) => l.id === store.activeListId) || store.lists[0];
+        const activeCount = activeList ? activeList.items.length : store.items.length;
+
+        if (activeCount === 0) {
+          if (this.feedManager) {
+            this.feedManager.destroy();
+            this.feedManager = null;
+          }
+          this.root.innerHTML = '';
+          this.root.appendChild(this.onboarding.getElement());
+          this.onboarding.show();
+        }
+      }
     });
 
     this.hud = new HUD({

@@ -1,7 +1,8 @@
 import { get, set, del } from 'idb-keyval';
-import { IStorageManager, PlaylistStore, VideoEntry, Playlist, ImportResult } from '../types/storage';
+import { IStorageManager, PlaylistStore, VideoEntry, Playlist, ImportResult, VersionSnapshot } from '../types/storage';
 
 const STORAGE_KEY = 'focus_scroll_playlist_v1';
+const VERSIONS_STORAGE_KEY = 'focus_scroll_versions_v1';
 
 export class StorageManager implements IStorageManager {
   private memoryCache: PlaylistStore | null = null;
@@ -373,6 +374,100 @@ export class StorageManager implements IStorageManager {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
+  }
+
+  // --- Version Control & Snapshots ---
+
+  async getVersions(): Promise<VersionSnapshot[]> {
+    let versions: VersionSnapshot[] = [];
+    try {
+      const stored = await get<VersionSnapshot[]>(VERSIONS_STORAGE_KEY);
+      if (Array.isArray(stored)) {
+        versions = stored;
+      }
+    } catch {}
+
+    if (versions.length === 0) {
+      try {
+        const raw = localStorage.getItem(VERSIONS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) versions = parsed;
+        }
+      } catch {}
+    }
+
+    if (versions.length === 0) {
+      const store = await this.load();
+      const baseline: VersionSnapshot = {
+        id: `ver_${Date.now()}_init`,
+        tag: 'v1.0.0 (Baseline)',
+        description: 'Initial system baseline checkpoint',
+        createdAt: Date.now(),
+        data: JSON.parse(JSON.stringify(store)),
+        summary: {
+          totalLists: store.lists.length,
+          totalVideos: store.lists.reduce((acc, l) => acc + l.items.length, 0),
+          activeListName: store.lists.find((l) => l.id === store.activeListId)?.name || 'Main Feed'
+        }
+      };
+      versions = [baseline];
+      await this.saveVersions(versions);
+    }
+
+    return versions.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  private async saveVersions(versions: VersionSnapshot[]): Promise<void> {
+    try {
+      await set(VERSIONS_STORAGE_KEY, versions);
+    } catch {}
+    try {
+      localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(versions));
+    } catch {}
+  }
+
+  async createVersion(tag?: string, description?: string): Promise<VersionSnapshot> {
+    const store = await this.load();
+    const versions = await this.getVersions();
+    const versionNum = versions.length + 1;
+    const finalTag = tag && tag.trim() ? tag.trim() : `v1.0.${versionNum}`;
+
+    const snapshot: VersionSnapshot = {
+      id: `ver_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      tag: finalTag,
+      description: description?.trim() || undefined,
+      createdAt: Date.now(),
+      data: JSON.parse(JSON.stringify(store)),
+      summary: {
+        totalLists: store.lists.length,
+        totalVideos: store.lists.reduce((acc, l) => acc + l.items.length, 0),
+        activeListName: store.lists.find((l) => l.id === store.activeListId)?.name || 'Main Feed'
+      }
+    };
+
+    versions.unshift(snapshot);
+    await this.saveVersions(versions);
+    return snapshot;
+  }
+
+  async restoreVersion(versionId: string): Promise<PlaylistStore> {
+    const versions = await this.getVersions();
+    const target = versions.find((v) => v.id === versionId);
+    if (!target) {
+      throw new Error(`Version snapshot ${versionId} not found.`);
+    }
+
+    const restoredData: PlaylistStore = JSON.parse(JSON.stringify(target.data));
+    const normalized = this.normalizeStore(restoredData);
+    await this.save(normalized);
+    return normalized;
+  }
+
+  async deleteVersion(versionId: string): Promise<void> {
+    const versions = await this.getVersions();
+    const filtered = versions.filter((v) => v.id !== versionId);
+    await this.saveVersions(filtered);
   }
 }
 
