@@ -23,14 +23,24 @@ class App {
     this.spinner = new BufferingSpinner();
 
     this.homeScreen = new HomeScreen(storage, {
-      onPlayFeed: async (listId, shuffle) => {
-        await storage.switchList(listId);
-        const videos = await storage.getFeedVideos(listId, shuffle);
-        if (videos.length === 0) {
-          this.drawer.open();
-          this.toast.show('This list is empty. Add videos to play!');
+      onPlayFeed: async (listId) => {
+        if (listId === 'default') {
+          const videos = await storage.getConsolidatedVideos();
+          if (videos.length === 0) {
+            this.drawer.open();
+            this.toast.show('No videos in any playlist yet');
+          } else {
+            await this.startFeed(videos, 0);
+          }
         } else {
-          await this.startFeed(videos, 0);
+          await storage.switchList(listId);
+          const videos = await storage.getFeedVideos(listId);
+          if (videos.length === 0) {
+            this.drawer.open();
+            this.toast.show('This list is empty. Add videos to play!');
+          } else {
+            await this.startFeed(videos, 0);
+          }
         }
       },
       onOpenDrawer: async (listId) => {
@@ -146,11 +156,7 @@ class App {
       }
     });
 
-    if (initialVideos && initialVideos.length > 0) {
-      await this.feedManager.setPlaylist(initialVideos, targetIndex || 0);
-    } else {
-      await this.feedManager.initialize();
-    }
+    await this.feedManager.initialize(initialVideos, targetIndex);
   }
 }
 

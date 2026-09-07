@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StorageManager } from '../../src/storage/db';
 import { HomeScreen } from '../../src/components/home';
+import { FeedManager } from '../../src/components/feed';
 
 describe('HomeScreen & Consolidated Main Feed', () => {
   let storage: StorageManager;
@@ -120,7 +121,13 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       const heroPlayBtn = el.querySelector('#home-hero-play-btn') as HTMLButtonElement;
       heroPlayBtn.click();
       await new Promise((r) => setTimeout(r, 20));
-      expect(onPlayFeed).toHaveBeenCalledWith('default', true);
+      expect(onPlayFeed).toHaveBeenCalledWith('default', false);
+
+      // Verify Main Feed is NOT rendered as a duplicate playlist card in playlists-grid
+      expect(el.querySelector('#home-playlists-grid .playlist-card[data-id="default"]')).toBeNull();
+
+      // Verify no "Dopamine" branding exists in the UI
+      expect(el.textContent).not.toContain('Dopamine');
 
       // Click individual playlist card
       const gamingCard = el.querySelector('.playlist-card[data-id^="list_"]') as HTMLElement;
@@ -146,6 +153,47 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       const versionBtn = el.querySelector('#home-btn-version') as HTMLButtonElement;
       versionBtn.click();
       expect(onOpenVersionControl).toHaveBeenCalledTimes(1);
+    });
+
+    it('properly initializes FeedManager with custom list items and loads first video', async () => {
+      const mockCueVideoById = vi.fn();
+      (window as unknown as { YT: unknown }).YT = {
+        Player: class {
+          constructor(_id: string, opts: { events?: { onReady?: () => void } }) {
+            setTimeout(() => opts?.events?.onReady?.(), 0);
+          }
+          loadVideoById = vi.fn();
+          cueVideoById = mockCueVideoById;
+          playVideo = vi.fn();
+          pauseVideo = vi.fn();
+          unMute = vi.fn();
+          mute = vi.fn();
+          isMuted = vi.fn(() => false);
+          seekTo = vi.fn();
+          getPlayerState = vi.fn(() => 1);
+          destroy = vi.fn();
+        }
+      };
+
+      const container = document.createElement('div');
+      const onPositionChange = vi.fn();
+      const feed = new FeedManager(container, storage, {
+        onPositionChange,
+        onToast: vi.fn(),
+        onEmptyState: vi.fn()
+      });
+
+      const initialVideos = [
+        { id: 'customVid001', addedAt: Date.now(), title: 'Custom 1' },
+        { id: 'customVid002', addedAt: Date.now(), title: 'Custom 2' }
+      ];
+
+      await feed.initialize(initialVideos, 0);
+
+      expect(onPositionChange).toHaveBeenCalledWith(1, 2);
+      expect(mockCueVideoById).toHaveBeenCalledWith('customVid001');
+
+      feed.destroy();
     });
   });
 });

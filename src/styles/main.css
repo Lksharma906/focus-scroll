@@ -1689,6 +1689,21 @@ html, body {
   gap: 10px;
 }
 
+.playlists-empty-hint {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.playlists-empty-hint strong {
+  color: #ccc;
+}
+
 .playlist-card {
   display: flex;
   align-items: center;

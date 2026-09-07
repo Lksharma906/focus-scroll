@@ -6,25 +6,25 @@
 [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF.svg?logo=vite)](https://vitejs.dev/)
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple.svg?logo=pwa)](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps)
 [![Cloudflare Workers](https://img.shields.io/badge/Deploy-Cloudflare%20Assets-F38020.svg?logo=cloudflare)](https://workers.cloudflare.com/)
-[![Tests](https://img.shields.io/badge/Tests-61%20Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-62%20Passing-brightgreen.svg?logo=vitest)](https://vitest.dev/)
 
-FocusScroll is a lightweight, mobile-first web application engineered to break the algorithmic doom-scrolling loop. Instead of an addictive algorithm serving endless unpredictable videos with comments and recommendation traps, FocusScroll plays **only the videos you choose to add**, grouped into custom playlists or aggregated into a randomized dopamine shuffle feed, with fluid swipe gestures, local IndexedDB persistence, and full offline installability.
+FocusScroll is a lightweight, mobile-first web application engineered to break the algorithmic doom-scrolling loop. Instead of an addictive algorithm serving endless unpredictable videos with comments and recommendation traps, FocusScroll plays **only the videos you choose to add**, grouped into custom playlists or consolidated into a unified Main Feed, with fluid swipe gestures, local IndexedDB persistence, and full offline installability.
 
 ---
 
 ## Key Features
 
 ### 1. HomeScreen Launchpad & Feed Selector
-* **Modern App Entrypoint**: Dedicated launchpad displaying all your custom feeds, total video count, and live status.
-* **Instant Feed Launch**: Start playing any playlist with a single tap, or jump into the consolidated cross-playlist feed.
-* **Hero Dopamine Mix**: Features a prominent hero card that aggregates all videos across every list with automatic Fisher-Yates shuffle for surprise playback.
+* **Modern App Entrypoint**: Dedicated launchpad displaying your playlists, total video count, and live status.
+* **Instant Feed Launch**: Start playing any playlist with a single tap, or jump directly into the consolidated Main Feed.
+* **Hero Main Feed Card**: Features a prominent hero card aggregating all videos across every playlist into one continuous stream.
 * **Version Information Pill**: Displays the active version (`v1.0.0`) and provides quick access to Version Control and Rollback snapshots.
 * **One-Tap Home Return**: Return to the home screen anytime from the video player using the floating HUD home button (`🏠`).
 
-### 2. Zero Algorithmic Traps & Consolidated Dopamine Shuffle
+### 2. Zero Algorithmic Traps & Consolidated Main Feed
 * **Curated-Only Experience**: Zero external recommendation algorithms, comments sections, or sponsored distractions.
-* **Consolidated Cross-Playlist Feed**: The Main Feed automatically unions unique videos across all your playlists without manual cross-linking.
-* **Random Playback ("Dopamine Kick")**: Enjoy spontaneous, unpredictable scrolling across your own library without falling into third-party algorithmic rabbit holes.
+* **Consolidated Cross-Playlist Feed**: The Main Feed automatically unifies unique videos across all your playlists without manual cross-linking.
+* **Intentional Consumption**: Full control over what you watch without endless discovery traps.
 
 ### 3. Multi-List Playlist Management
 * **Custom Named Playlists**: Create, switch between, and manage multiple lists (e.g. *Main Feed*, *Workout Energy*, *Focus & Flow*).

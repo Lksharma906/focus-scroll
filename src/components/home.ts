@@ -40,6 +40,7 @@ export class HomeScreen {
   async render(): Promise<void> {
     const store = await this.storage.load();
     const lists = store.lists || [];
+    const customLists = lists.filter((l) => l.id !== 'default');
     const consolidated = await this.storage.getConsolidatedVideos();
     const totalVideos = consolidated.length;
 
@@ -82,20 +83,20 @@ export class HomeScreen {
         </header>
 
         <main class="home-main-scroll">
-          <!-- Featured Hero: Consolidated Main Feed -->
+          <!-- Featured Hero: Main Feed -->
           <section class="home-hero-card">
             <div class="hero-top-row">
               <div class="hero-badge">
                 <span class="pulse-dot"></span>
-                <span>Consolidated Main Feed</span>
+                <span>Main Feed</span>
               </div>
               <span class="hero-stat-pill">${totalVideos} video${totalVideos === 1 ? '' : 's'}</span>
             </div>
 
             <div class="hero-info">
-              <h2 class="hero-heading">Dopamine Scroll Mix</h2>
+              <h2 class="hero-heading">Main Feed</h2>
               <p class="hero-subtext">
-                All ${totalVideos} videos across ${lists.length} playlists consolidated into an algorithm-free, randomized stream.
+                All ${totalVideos} videos across your playlists consolidated into one continuous stream.
               </p>
 
               ${
@@ -120,22 +121,8 @@ export class HomeScreen {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="5 3 19 12 5 21 5 3"></polygon>
                 </svg>
-                <span>${totalVideos > 0 ? 'Play Main Feed (Shuffle)' : 'Add Videos First'}</span>
+                <span>${totalVideos > 0 ? 'Play Main Feed' : 'Add Videos First'}</span>
               </button>
-
-              ${
-                totalVideos > 1
-                  ? `<button type="button" class="btn-hero-shuffle" id="home-hero-shuffle-btn" title="Re-shuffle order & play">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="16 3 21 3 21 8"></polyline>
-                        <line x1="4" y1="20" x2="21" y2="3"></line>
-                        <polyline points="21 16 21 21 16 21"></polyline>
-                        <line x1="15" y1="15" x2="21" y2="21"></line>
-                        <line x1="4" y1="4" x2="9" y2="9"></line>
-                      </svg>
-                    </button>`
-                  : ''
-              }
             </div>
           </section>
 
@@ -158,8 +145,8 @@ export class HomeScreen {
           <section class="home-playlists-section">
             <div class="section-header-row">
               <div>
-                <h3 class="section-title">Playlists & Feeds</h3>
-                <span class="section-count">${lists.length} feed${lists.length === 1 ? '' : 's'} available</span>
+                <h3 class="section-title">Playlists</h3>
+                <span class="section-count">${customLists.length} playlist${customLists.length === 1 ? '' : 's'}</span>
               </div>
               <button type="button" class="btn-new-list-pill" id="home-btn-create-list" title="Create a new custom playlist">
                 <span>+ New List</span>
@@ -167,51 +154,54 @@ export class HomeScreen {
             </div>
 
             <div class="playlists-grid" id="home-playlists-grid">
-              ${lists
-                .map((list) => {
-                  const isMain = list.id === 'default';
-                  const count = isMain ? totalVideos : list.items.length;
-                  const firstVideo = isMain
-                    ? consolidated[0]
-                    : list.items[0];
-                  const thumb = firstVideo ? getYoutubeThumbnail(firstVideo.id) : '';
+              ${
+                customLists.length > 0
+                  ? customLists
+                      .map((list) => {
+                        const count = list.items.length;
+                        const firstVideo = list.items[0];
+                        const thumb = firstVideo ? getYoutubeThumbnail(firstVideo.id) : '';
 
-                  return `
-                    <div class="playlist-card ${list.id === store.activeListId ? 'active-list' : ''}" data-id="${list.id}">
-                      <div class="playlist-card-cover">
-                        ${
-                          thumb
-                            ? `<img src="${thumb}" alt="${list.name}" class="playlist-card-img" />`
-                            : `<div class="playlist-card-placeholder">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                </svg>
-                              </div>`
-                        }
-                        <span class="playlist-card-badge">${count} video${count === 1 ? '' : 's'}</span>
-                      </div>
-                      <div class="playlist-card-info">
-                        <div class="playlist-card-title">${list.name}</div>
-                        <div class="playlist-card-meta">${isMain ? 'Consolidated Feed' : count > 0 ? 'Custom List' : 'Empty List'}</div>
-                      </div>
-                      <div class="playlist-card-actions">
-                        ${
-                          count > 0
-                            ? `<button type="button" class="btn-play-card" data-id="${list.id}" title="Play ${list.name}">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                                </svg>
-                                <span>Play</span>
-                              </button>`
-                            : `<button type="button" class="btn-add-card" data-id="${list.id}" title="Add videos">
-                                <span>+ Add</span>
-                              </button>`
-                        }
-                      </div>
-                    </div>
-                  `;
-                })
-                .join('')}
+                        return `
+                          <div class="playlist-card ${list.id === store.activeListId ? 'active-list' : ''}" data-id="${list.id}">
+                            <div class="playlist-card-cover">
+                              ${
+                                thumb
+                                  ? `<img src="${thumb}" alt="${list.name}" class="playlist-card-img" />`
+                                  : `<div class="playlist-card-placeholder">
+                                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                      </svg>
+                                    </div>`
+                              }
+                              <span class="playlist-card-badge">${count} video${count === 1 ? '' : 's'}</span>
+                            </div>
+                            <div class="playlist-card-info">
+                              <div class="playlist-card-title">${list.name}</div>
+                              <div class="playlist-card-meta">${count > 0 ? `${count} video${count === 1 ? '' : 's'}` : 'Empty List'}</div>
+                            </div>
+                            <div class="playlist-card-actions">
+                              ${
+                                count > 0
+                                  ? `<button type="button" class="btn-play-card" data-id="${list.id}" title="Play ${list.name}">
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                      </svg>
+                                      <span>Play</span>
+                                    </button>`
+                                  : `<button type="button" class="btn-add-card" data-id="${list.id}" title="Add videos">
+                                      <span>+ Add</span>
+                                    </button>`
+                              }
+                            </div>
+                          </div>
+                        `;
+                      })
+                      .join('')
+                  : `<div class="playlists-empty-hint">
+                      <p>No custom playlists yet. Use <strong>+ New List</strong> to organize your shorts into categories.</p>
+                    </div>`
+              }
             </div>
           </section>
 
@@ -261,12 +251,8 @@ export class HomeScreen {
       if (consolidated.length === 0) {
         this.callbacks.onOpenDrawer('default');
       } else {
-        this.callbacks.onPlayFeed('default', true); // Shuffle on play
+        this.callbacks.onPlayFeed('default', false);
       }
-    });
-
-    this.element.querySelector('#home-hero-shuffle-btn')?.addEventListener('click', () => {
-      this.callbacks.onPlayFeed('default', true);
     });
 
     // Empty state buttons
@@ -298,16 +284,12 @@ export class HomeScreen {
           return;
         }
 
-        const isMain = listId === 'default';
-        const videos = isMain
-          ? await this.storage.getConsolidatedVideos()
-          : (await this.storage.getLists()).find((l) => l.id === listId)?.items || [];
-
+        const videos = (await this.storage.getLists()).find((l) => l.id === listId)?.items || [];
         if (videos.length === 0) {
           await this.storage.switchList(listId);
           this.callbacks.onOpenDrawer(listId);
         } else {
-          this.callbacks.onPlayFeed(listId, isMain);
+          this.callbacks.onPlayFeed(listId, false);
         }
       });
     });

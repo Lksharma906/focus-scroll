@@ -26,6 +26,7 @@ export class FeedManager {
   private playlist: VideoEntry[] = [];
   private currentIndex = 0;
   private isTransitioning = false;
+  private isPlayerInitialized = false;
 
   private audioGate: AudioGate;
   private pauseIndicator: PauseIndicator;
@@ -102,20 +103,33 @@ export class FeedManager {
     }
   };
 
-  async initialize(): Promise<void> {
-    const store = await this.storage.load();
-    this.playlist = store.items;
+  async initialize(initialPlaylist?: VideoEntry[], targetIndex?: number): Promise<void> {
+    if (initialPlaylist && initialPlaylist.length > 0) {
+      this.playlist = initialPlaylist;
+      this.currentIndex =
+        typeof targetIndex === 'number'
+          ? Math.min(Math.max(targetIndex, 0), this.playlist.length - 1)
+          : 0;
+    } else {
+      const store = await this.storage.load();
+      this.playlist = store.items;
+
+      if (this.playlist.length === 0) {
+        this.callbacks.onEmptyState();
+        return;
+      }
+
+      // Restore lastActiveIndex (Principle P4 & Clarified requirement)
+      this.currentIndex =
+        store.lastActiveIndex >= 0 && store.lastActiveIndex < this.playlist.length
+          ? store.lastActiveIndex
+          : 0;
+    }
 
     if (this.playlist.length === 0) {
       this.callbacks.onEmptyState();
       return;
     }
-
-    // Restore lastActiveIndex (Principle P4 & Clarified requirement)
-    this.currentIndex =
-      store.lastActiveIndex >= 0 && store.lastActiveIndex < this.playlist.length
-        ? store.lastActiveIndex
-        : 0;
 
     this.callbacks.onPositionChange(this.currentIndex + 1, this.playlist.length);
 
@@ -139,6 +153,7 @@ export class FeedManager {
       }
     });
 
+    this.isPlayerInitialized = true;
     this.loadActiveVideo();
   }
 
@@ -307,7 +322,9 @@ export class FeedManager {
 
     this.callbacks.onPositionChange(this.currentIndex + 1, this.playlist.length);
     if (this.playlist.length > 0) {
-      this.loadActiveVideo();
+      if (this.isPlayerInitialized) {
+        this.loadActiveVideo();
+      }
     } else {
       this.callbacks.onEmptyState();
     }
