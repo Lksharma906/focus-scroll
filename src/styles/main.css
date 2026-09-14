@@ -49,8 +49,9 @@ html, body {
   height: 100%;
   position: relative;
   overflow: hidden;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  touch-action: none;
   background: #000;
 }
 
@@ -106,6 +107,9 @@ html, body {
   z-index: 10;
   background: transparent;
   cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Audio Unlock Gate Prompt */

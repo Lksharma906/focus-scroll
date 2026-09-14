@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StorageManager } from '../../src/storage/db';
 import { HomeScreen } from '../../src/components/home';
 import { FeedManager } from '../../src/components/feed';
+import { APP_VERSION } from '../../src/config/version';
 
 describe('HomeScreen & Consolidated Main Feed', () => {
   let storage: StorageManager;
@@ -90,7 +91,7 @@ describe('HomeScreen & Consolidated Main Feed', () => {
       await home.render();
 
       expect(el.querySelector('.home-brand-title')?.textContent).toBe('FocusScroll');
-      expect(el.querySelector('#home-btn-version')?.textContent).toContain('v1.0.1');
+      expect(el.querySelector('#home-btn-version')?.textContent).toContain(`v${APP_VERSION}`);
 
       // Empty state prompt visible when 0 videos
       const emptyCard = el.querySelector('.home-empty-card') as HTMLElement;

@@ -23,6 +23,7 @@ export class GestureEngine implements IGestureEngine {
 
   attach(element: HTMLElement, config?: Partial<GestureConfig>): void {
     this.element = element;
+    this.element.style.touchAction = 'none';
     if (config) {
       this.config = { ...this.config, ...config };
     }
@@ -44,6 +45,7 @@ export class GestureEngine implements IGestureEngine {
 
   detach(): void {
     if (!this.element) return;
+    this.element.style.touchAction = '';
     if (typeof window !== 'undefined' && 'PointerEvent' in window) {
       this.element.removeEventListener('pointerdown', this.handlePointerDown);
       this.element.removeEventListener('pointermove', this.handlePointerMove);
@@ -146,6 +148,10 @@ export class GestureEngine implements IGestureEngine {
       return;
     }
 
+    if (typeof e.clientY === 'number' && !isNaN(e.clientY)) {
+      this.currentY = e.clientY;
+    }
+
     const elapsedMs = performance.now() - this.startTime;
     const deltaY = this.currentY - this.startY;
     const viewportHeight = window.innerHeight || 800;
@@ -208,13 +214,17 @@ export class GestureEngine implements IGestureEngine {
     this.onDragMoveCallback?.(deltaY);
   };
 
-  private handleTouchEnd = (): void => {
+  private handleTouchEnd = (e: TouchEvent): void => {
     if (!this.isTracking) return;
     this.isTracking = false;
 
     if (this.isLocked) {
       this.onDragEndCallback?.();
       return;
+    }
+
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      this.currentY = e.changedTouches[0].clientY;
     }
 
     const elapsedMs = performance.now() - this.startTime;
