@@ -3,6 +3,8 @@ export interface HUDCallbacks {
   onHome?: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
+  onSeekForward?: () => void;
+  onSeekBackward?: () => void;
 }
 
 export class HUD {
@@ -12,6 +14,8 @@ export class HUD {
   private homeBtn: HTMLElement | null = null;
   private prevBtn: HTMLElement | null = null;
   private nextBtn: HTMLElement | null = null;
+  private seekBackBtn: HTMLElement | null = null;
+  private seekFwdBtn: HTMLElement | null = null;
   private fadeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: (() => void) | HUDCallbacks) {
@@ -42,12 +46,26 @@ export class HUD {
         </button>
       </div>
       <div class="hud-nav-controls">
-        <button class="hud-btn hud-nav-btn prev-btn" aria-label="Previous video" title="Previous (↑ or k)">
+        <button class="hud-btn hud-nav-btn prev-btn" aria-label="Previous video" title="Previous video (↑ or k)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="18 15 12 9 6 15"></polyline>
           </svg>
         </button>
-        <button class="hud-btn hud-nav-btn next-btn" aria-label="Next video" title="Next (↓ or j)">
+        <button class="hud-btn hud-nav-btn seek-back-btn" aria-label="Rewind 30 seconds" title="Rewind 30s (← or [)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 4v6h6"></path>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            <text x="12" y="15.5" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">30</text>
+          </svg>
+        </button>
+        <button class="hud-btn hud-nav-btn seek-fwd-btn" aria-label="Forward 30 seconds" title="Forward 30s (→ or ])">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            <text x="12" y="15.5" font-size="7.5" font-family="-apple-system, sans-serif" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle">30</text>
+          </svg>
+        </button>
+        <button class="hud-btn hud-nav-btn next-btn" aria-label="Next video" title="Next video (↓ or j)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -60,6 +78,8 @@ export class HUD {
     this.homeBtn = this.element.querySelector('.home-toggle-btn') as HTMLElement;
     this.prevBtn = this.element.querySelector('.prev-btn') as HTMLElement;
     this.nextBtn = this.element.querySelector('.next-btn') as HTMLElement;
+    this.seekBackBtn = this.element.querySelector('.seek-back-btn') as HTMLElement;
+    this.seekFwdBtn = this.element.querySelector('.seek-fwd-btn') as HTMLElement;
 
     this.homeBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -76,11 +96,22 @@ export class HUD {
       callbacks.onPrevious?.();
     });
 
+    this.seekBackBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onSeekBackward?.();
+    });
+
+    this.seekFwdBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onSeekForward?.();
+    });
+
     this.nextBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       callbacks.onNext?.();
     });
   }
+
 
   getElement(): HTMLElement {
     return this.element;

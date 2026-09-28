@@ -6,6 +6,7 @@ import { VideoEntry } from '../types/storage';
 import { AudioGate } from './audio-gate';
 import { PauseIndicator } from './pause-indicator';
 import { ReplayOverlay } from './replay-overlay';
+import { SeekIndicator } from './seek-indicator';
 
 export interface FeedCallbacks {
   onPositionChange: (index: number, total: number) => void;
@@ -31,7 +32,9 @@ export class FeedManager {
   private audioGate: AudioGate;
   private pauseIndicator: PauseIndicator;
   private replayOverlay: ReplayOverlay;
+  private seekIndicator: SeekIndicator;
   private callbacks: FeedCallbacks;
+
 
   constructor(
     container: HTMLElement,
@@ -69,6 +72,9 @@ export class FeedManager {
     this.pauseIndicator = new PauseIndicator();
     this.wrapperElement.appendChild(this.pauseIndicator.getElement());
 
+    this.seekIndicator = new SeekIndicator();
+    this.wrapperElement.appendChild(this.seekIndicator.getElement());
+
     this.setupGestures();
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -89,6 +95,12 @@ export class FeedManager {
       if (!this.isTransitioning) {
         this.navigate('down');
       }
+    } else if (e.key === 'ArrowLeft' || e.key === '[') {
+      e.preventDefault();
+      this.seekBy(-30);
+    } else if (e.key === 'ArrowRight' || e.key === ']') {
+      e.preventDefault();
+      this.seekBy(30);
     } else if (e.key === ' ') {
       e.preventDefault();
       if (this.player.isEnded()) {
@@ -245,6 +257,16 @@ export class FeedManager {
       this.navigate('down');
     }
   }
+
+  seekBy(deltaSeconds: number): void {
+    if (!this.player) return;
+    const targetTime = this.player.seekBy(deltaSeconds);
+    if (this.player.isEnded() && deltaSeconds < 0) {
+      this.replayOverlay.hide();
+    }
+    this.seekIndicator.trigger(deltaSeconds, targetTime);
+  }
+
 
   private async navigate(direction: 'up' | 'down'): Promise<void> {
     const { nextIndex, wrapped, bounced } = calculateNextIndex(

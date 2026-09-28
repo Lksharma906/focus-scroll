@@ -27,4 +27,9 @@ export interface IPlayerController {
   unlockAudio(): void;
   getCurrentState(): PlayerState;
   destroy(): void;
+  seekBy(deltaSeconds: number): number;
+  seekTo(seconds: number): void;
+  getCurrentTime(): number;
+  getDuration(): number;
 }
+

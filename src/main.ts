@@ -113,8 +113,11 @@ class App {
       onOpenDrawer: () => this.drawer.open(),
       onHome: () => this.showHomeScreen(),
       onNext: () => this.feedManager?.next(),
-      onPrevious: () => this.feedManager?.previous()
+      onPrevious: () => this.feedManager?.previous(),
+      onSeekForward: () => this.feedManager?.seekBy(30),
+      onSeekBackward: () => this.feedManager?.seekBy(-30)
     });
+
 
     const { backdrop, drawer: drawerEl } = this.drawer.getElements();
     document.body.appendChild(backdrop);

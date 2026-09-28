@@ -13,7 +13,10 @@ interface YTPlayerInstance {
   seekTo(seconds: number, allowSeekAhead: boolean): void;
   getPlayerState(): number;
   destroy(): void;
+  getCurrentTime?(): number;
+  getDuration?(): number;
 }
+
 
 export class PlayerController implements IPlayerController {
   private player: YTPlayerInstance | null = null;
@@ -140,6 +143,53 @@ export class PlayerController implements IPlayerController {
     this.stateMachine.transition('PLAY');
     this.notifyState();
   }
+
+  getCurrentTime(): number {
+    if (!this.player || typeof this.player.getCurrentTime !== 'function') return 0;
+    try {
+      return this.player.getCurrentTime() || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  getDuration(): number {
+    if (!this.player || typeof this.player.getDuration !== 'function') return 0;
+    try {
+      return this.player.getDuration() || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  seekTo(seconds: number): void {
+    if (!this.player) return;
+    const duration = this.getDuration();
+    let target = Math.max(0, seconds);
+    if (duration > 0) {
+      target = Math.min(target, duration);
+    }
+    this.player.seekTo(target, true);
+    if (this.stateMachine.isEnded()) {
+      this.play();
+    }
+  }
+
+  seekBy(deltaSeconds: number): number {
+    if (!this.player) return 0;
+    const current = this.getCurrentTime();
+    const duration = this.getDuration();
+    let target = current + deltaSeconds;
+    if (target < 0) target = 0;
+    if (duration > 0 && target > duration) target = duration;
+
+    this.player.seekTo(target, true);
+    if (this.stateMachine.isEnded() && deltaSeconds < 0) {
+      this.play();
+    }
+    return target;
+  }
+
 
   private handleYTStateChange(ytState: number): void {
     // YT.PlayerState: ENDED (0), PLAYING (1), PAUSED (2), BUFFERING (3), CUED (5)
